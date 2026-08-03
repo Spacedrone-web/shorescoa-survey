@@ -1,0 +1,20 @@
+﻿---
+export const prerender = false;
+
+// Read the token from the Cloudflare environment
+const env = (Astro.locals as any).runtime?.env;
+const token = env?.SURVEY_TOKEN;
+
+// Set the auth cookie so the survey page accepts this visitor
+if (token) {
+  Astro.cookies.set('survey_auth', token, {
+    httpOnly: true,
+    sameSite: 'strict',
+    path: '/',
+    maxAge: 3600,
+  });
+}
+
+// Redirect to the survey — no token in the URL
+return Astro.redirect('/');
+---
