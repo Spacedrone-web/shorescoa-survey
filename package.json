@@ -1,0 +1,18 @@
+{
+  "name": "shorescoa-survey",
+  "type": "module",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro",
+    "setup-db": "node setup-db.js"
+  },
+  "dependencies": {
+    "@astrojs/netlify": "^6.0.0",
+    "@libsql/client": "^0.14.0",
+    "astro": "^5.0.0",
+    "dotenv": "^16.4.0"
+  }
+}
