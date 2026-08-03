@@ -163,18 +163,18 @@ if (authed) {
         </select>
       </div>
       <div class="sep"></div>
-      <button class="apply-btn" onclick="applyFilters()">Apply Filters</button>
-      <button class="csv-btn" onclick="downloadCSV()">&#8681; Download CSV</button>
+      <button class="apply-btn" id="apply-btn">Apply Filters</button>
+      <button class="csv-btn" id="csv-btn">&#8681; Download CSV</button>
     </div>
 
     <div class="section-bar">
       <span>Sections:</span>
-      <label><input type="checkbox" id="s-checkin"     onchange="updateSections()" /> Check-in Ratings</label>
-      <label><input type="checkbox" id="s-staff"       onchange="updateSections()" /> Staff Ratings</label>
-      <label><input type="checkbox" id="s-clean"       onchange="updateSections()" /> Cleanliness Ratings</label>
-      <label><input type="checkbox" id="s-overall"     onchange="updateSections()" /> Overall Condition</label>
-      <label><input type="checkbox" id="s-recommend"   onchange="updateSections()" /> Recommend</label>
-      <label><input type="checkbox" id="s-all"         onchange="toggleAll(this)"  /> All Questions</label>
+      <label><input type="checkbox" id="s-checkin"     /> Check-in Ratings</label>
+      <label><input type="checkbox" id="s-staff"       /> Staff Ratings</label>
+      <label><input type="checkbox" id="s-clean"       /> Cleanliness Ratings</label>
+      <label><input type="checkbox" id="s-overall"     /> Overall Condition</label>
+      <label><input type="checkbox" id="s-recommend"   /> Recommend</label>
+      <label><input type="checkbox" id="s-all"          /> All Questions</label>
     </div>
 
     <div class="table-wrap">
@@ -292,7 +292,7 @@ function renderTable(data) {
 
   const thCells = cols.map(c => {
     const cls = c.key === sortCol ? `sort-${sortDir}` : '';
-    return `<th class="${cls}" onclick="sortBy('${c.key}')">${c.label}</th>`;
+    return '<th class="' + cls + '" data-key="' + c.key + '">' + c.label + '</th>';
   }).join('');
   thead.innerHTML = hRows + `<tr>${thCells}</tr>`;
 
@@ -411,6 +411,22 @@ function downloadCSV() {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 if (document.getElementById('data-table')) {
+  // Button listeners
+  document.getElementById('apply-btn').addEventListener('click', applyFilters);
+  document.getElementById('csv-btn').addEventListener('click', downloadCSV);
+
+  // Checkbox listeners
+  ['checkin','staff','clean','overall','recommend'].forEach(function(s) {
+    document.getElementById('s-' + s).addEventListener('change', updateSections);
+  });
+  document.getElementById('s-all').addEventListener('change', function() { toggleAll(this); });
+
+  // Column sort via event delegation on thead
+  document.getElementById('thead').addEventListener('click', function(e) {
+    var th = e.target.closest('th[data-key]');
+    if (th) sortBy(th.getAttribute('data-key'));
+  });
+
   applyFilters();
 }
 </script>
