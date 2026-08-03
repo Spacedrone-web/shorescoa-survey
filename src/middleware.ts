@@ -1,10 +1,11 @@
-import { defineMiddleware } from 'astro:middleware';
+﻿import { defineMiddleware } from 'astro:middleware';
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const { pathname } = context.url;
 
   if (pathname === '/' || pathname === '') {
-    const SURVEY_TOKEN = import.meta.env.SURVEY_TOKEN;
+    const env = (context.locals as any).runtime?.env;
+    const SURVEY_TOKEN = env?.SURVEY_TOKEN;
 
     if (!SURVEY_TOKEN) {
       return next();
