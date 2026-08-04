@@ -199,6 +199,19 @@ Shores of Panama COA`;
     }
   });
 
+  function dedup(rows) {
+    const seen = new Map();
+    for (const row of rows) {
+      const key = row.email + '|' + row.unit;
+      if (!seen.has(key)) {
+        seen.set(key, row);
+      } else if (row.status === 'active' && seen.get(key).status !== 'active') {
+        seen.set(key, row);
+      }
+    }
+    return [...seen.values()];
+  }
+
   function renderTable(rows) {
     guestBody.innerHTML = '';
     if (!rows.length) {
@@ -300,6 +313,7 @@ Shores of Panama COA`;
 </script>
 </body>
 </html>
+
 
 
 
