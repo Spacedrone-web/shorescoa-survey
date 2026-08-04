@@ -195,7 +195,7 @@ Shores of Panama COA`;
       filteredRows.sort((a, b) => (a.unit || '').localeCompare(b.unit || '', undefined, { numeric: true }));
       renderTable(filteredRows);
       const countEl = document.getElementById('emailCount');
-      if (countEl) countEl.textContent = filteredRows.length + ' guests';
+      if (countEl) { countEl.textContent = filteredRows.length + ' guests'; countEl.style.display = ''; }
       statusBar.innerHTML = `<span class="badge">${filteredRows.length}</span>&nbsp; guests found`;
     } catch (err) {
       statusBar.innerHTML = `<span class="err">Error: ${err.message}</span>`;
@@ -318,6 +318,7 @@ Shores of Panama COA`;
 </script>
 </body>
 </html>
+
 
 
 
