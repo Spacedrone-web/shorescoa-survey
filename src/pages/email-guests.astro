@@ -190,7 +190,7 @@ Shores of Panama COA`;
       filteredRows = json.rows || [];
       const passType = document.getElementById('passTypeFilter').value;
       if (passType) filteredRows = filteredRows.filter(r => r.passType === passType);
-      renderTable(filteredRows);
+      renderTable(dedup(filteredRows));
       statusBar.innerHTML = `<span class="badge">${filteredRows.length}</span>&nbsp; guests found`;
     } catch (err) {
       statusBar.innerHTML = `<span class="err">Error: ${err.message}</span>`;
@@ -300,5 +300,7 @@ Shores of Panama COA`;
 </script>
 </body>
 </html>
+
+
 
 
