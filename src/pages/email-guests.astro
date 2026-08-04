@@ -85,6 +85,14 @@ if (!authed) {
     <label>Start Date — To</label>
     <input type="date" id="startEnd" />
   </div>
+  <div class="ctrl-group">
+    <label>Pass Type</label>
+    <select id="passTypeFilter" style="padding:.45rem .7rem;border:1.5px solid #cbd5e0;border-radius:7px;font-size:.9rem;color:#2d3748;outline:none">
+      <option value="Registration Fee">Registration Fee</option>
+      <option value="Guest Wristband">Guest Wristband</option>
+      <option value="">All Types</option>
+    </select>
+  </div>
   <button class="btn-primary" id="fetchBtn">Fetch Guests</button>
 </div>
 <div class="status-bar" id="statusBar">Enter a date range and click Fetch Guests.</div>
@@ -180,6 +188,8 @@ Shores of Panama COA`;
       const json = await resp.json();
       if (!json.ok) throw new Error(json.error || 'Unknown error');
       filteredRows = json.rows || [];
+      const passType = document.getElementById('passTypeFilter').value;
+      if (passType) filteredRows = filteredRows.filter(r => r.passType === passType);
       renderTable(filteredRows);
       statusBar.innerHTML = `<span class="badge">${filteredRows.length}</span>&nbsp; guests found`;
     } catch (err) {
@@ -290,3 +300,5 @@ Shores of Panama COA`;
 </script>
 </body>
 </html>
+
+
