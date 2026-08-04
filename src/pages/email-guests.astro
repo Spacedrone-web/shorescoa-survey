@@ -206,7 +206,7 @@ Shores of Panama COA`;
   function dedup(rows) {
     const seen = new Map();
     for (const row of rows) {
-      const key = row.email + '|' + row.unit;
+      const key = (row.unit || '').trim().replace(/\s+/g, ' ').toLowerCase();
       if (!seen.has(key)) {
         seen.set(key, row);
       } else if (row.status === 'active' && seen.get(key).status !== 'active') {
@@ -289,10 +289,10 @@ Shores of Panama COA`;
   openMailtoFinal.addEventListener('click', () => {
     const rows = modalOverlay._selectedRows || [];
     if (rows.length > 30) alert('Warning: More than 30 recipients. Your email client may truncate the mailto link.');
-    const to   = rows.map(r => r.email).join(';');
+    const bcc  = rows.map(r => r.email).join(';');
     const subj = encodeURIComponent("Shores of Panama \u2013 We'd Love Your Feedback!");
     const body = encodeURIComponent(emailBodyTA.value);
-    window.open('mailto:' + to + '?subject=' + subj + '&body=' + body, '_blank');
+    window.open('mailto:?bcc=' + bcc + '&subject=' + subj + '&body=' + body, '_blank');
     modalOverlay.classList.remove('open');
   });
 
@@ -317,6 +317,7 @@ Shores of Panama COA`;
 </script>
 </body>
 </html>
+
 
 
 
