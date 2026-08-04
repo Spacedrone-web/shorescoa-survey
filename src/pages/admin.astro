@@ -328,9 +328,9 @@ function renderTable(data) {
       const vals = data.map(r => parseFloat(r[c.key])).filter(n => !isNaN(n));
       if (vals.length) {
         const avg = (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1);
-        return `<td class="num-col">${avg}</td>`;
+        return `<td class="num-col" style="text-align:center">${avg}</td>`;
       }
-      return `<td class="num-col">—</td>`;
+      return `<td class="num-col" style="text-align:center">—</td>`;
     }
     return `<td>${c.key === 'submitted_at' ? 'Averages' : ''}</td>`;
   }).join('');
