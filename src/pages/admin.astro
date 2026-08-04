@@ -315,7 +315,7 @@ function renderTable(data) {
   const rows = data.map(row => {
     const cells = cols.map(c => {
       const v = row[c.key];
-      const cls = numKeys.has(c.key) ? ' class="num-col"' : '';
+      const cls = numKeys.has(c.key) ? ' class="num-col" style="text-align:center"' : '';
       const display = (v === null || v === undefined || v === '') ? '<span class="empty">—</span>' : fmt(v);
       return `<td${cls}>${display}</td>`;
     }).join('');
