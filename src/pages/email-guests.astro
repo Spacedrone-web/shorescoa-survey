@@ -191,7 +191,7 @@ Shores of Panama COA`;
       const passType = document.getElementById('passTypeFilter').value;
       if (passType) filteredRows = filteredRows.filter(r => r.passType === passType);
       filteredRows = dedup(filteredRows);
-      filteredRows.sort((a, b) => (a.unit || '').localeCompare(b.unit || ''));
+      filteredRows.sort((a, b) => (a.unit || '').localeCompare(b.unit || '', undefined, { numeric: true }));
       renderTable(filteredRows);
       const countEl = document.getElementById('emailCount');
       if (countEl) countEl.textContent = filteredRows.length + ' guests';
@@ -317,6 +317,7 @@ Shores of Panama COA`;
 </script>
 </body>
 </html>
+
 
 
 
