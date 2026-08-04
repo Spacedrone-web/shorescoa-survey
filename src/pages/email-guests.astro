@@ -185,7 +185,8 @@ Shores of Panama COA`;
       if (startEnd)   params.set('startEnd',   startEnd);
       if ([...params].length) url += '?' + params.toString();
       const resp = await fetch(url);
-      const json = await resp.json();
+      const text = await resp.text();
+      let json; try { json = JSON.parse(text); } catch { throw new Error('API unavailable (' + resp.status + ') — try again in a moment.'); }
       if (!json.ok) throw new Error(json.error || 'Unknown error');
       filteredRows = json.rows || [];
       const passType = document.getElementById('passTypeFilter').value;
@@ -317,6 +318,7 @@ Shores of Panama COA`;
 </script>
 </body>
 </html>
+
 
 
 
