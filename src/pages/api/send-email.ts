@@ -1,4 +1,4 @@
-export const prerender = false;
+﻿export const prerender = false;
 import type { APIContext } from "astro";
 
 const SMTP_HOST  = "server1.shorescoa.com";
@@ -12,7 +12,7 @@ function b64(str: string): string {
 }
 
 async function smtpSend(to: string, subject: string, bodyText: string): Promise<void> {
-  // @ts-ignore — cloudflare:sockets available at CF Workers/Pages runtime
+  // @ts-ignore â€” cloudflare:sockets available at CF Workers/Pages runtime
   const { connect } = await import("cloudflare:sockets");
 
   const socket = connect(
@@ -114,13 +114,13 @@ export async function POST({ request, cookies }: APIContext) {
     const guestName = name || "Guest";
     const subject   = (test ? "[TEST] " : "") +
       "Shores of Panama \u2013 We\u2019d Love Your Feedback!";
-    const bodyText  = (test ? "[TEST EMAIL \u2014 PLEASE IGNORE]\n\n" : "")
-      + `Dear ${guestName},\n\n`
-      + `Thank you for staying at Shores of Panama! We hope you had a wonderful visit.\n\n`
-      + `We would love to hear about your experience. Please take a moment to complete our brief guest survey:\n\n`
-      + `${SURVEY_URL}\n\n`
-      + `Your feedback helps us continue to improve the property and services for all guests.\n\n`
-      + `Thank you,\nShores of Panama COA`;
+    const bodyText  = (test ? "[TEST EMAIL \u2014 PLEASE IGNORE]\r\n\r\n" : "")
+      + `Dear ${guestName},\r\n\r\n`
+      + `Thank you for staying at Shores of Panama!\r\nWe hope you had a wonderful visit.\r\n\r\n`
+      + `We would love to hear about your experience.\r\nPlease take a moment to complete our brief guest survey:\r\n\r\n`
+      + `${SURVEY_URL}\r\n\r\n`
+      + `Your feedback helps us continue to improve the property and services for all guests.\r\n\r\n`
+      + `Thank you,\r\nShores of Panama COA`;
 
     await smtpSend(to, subject, bodyText);
     return j({ ok: true });
@@ -128,3 +128,4 @@ export async function POST({ request, cookies }: APIContext) {
     return j({ ok: false, error: String(err?.message ?? err) }, 500);
   }
 }
+
