@@ -87,7 +87,7 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
   <div class="bulk-bar" id="bulkBar">
     <input type="checkbox" id="selectAll" title="Select all visible" />
     <span id="selectedCount">0 selected</span>
-    <button class="btn btn-secondary" id="exportCsvBtn">&#128190; Download CSV</button>
+    <button class="btn btn-primary" id="bccMailtoBtn" disabled>&#9993; Open BCC Mailto</button> <button class="btn btn-warning" id="markSentBtn" disabled>&#10003; Mark as Sent</button> <button class="btn btn-secondary" id="exportCsvBtn">&#128190; Download CSV</button>
   </div>
 
   <div class="table-wrap">
@@ -129,6 +129,7 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
   const selectedCount=$('selectedCount'), exportCsvBtn=$('exportCsvBtn');
   const guestTable=$('guestTable'), guestBody=$('guestBody'), noData=$('noData');
   const navSent=$('navSent'), navUnsent=$('navUnsent');
+  const bccMailtoBtn=document.getElementById('bccMailtoBtn'), markSentBtn=document.getElementById('markSentBtn');
   const testModal=$('testModal'), testEmailInput=$('testEmailInput');
   const cancelTest=$('cancelTest'), sendTestBtn=$('sendTestBtn'), testResult=$('testResult');
 
@@ -251,6 +252,8 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
     }
   }
 
+  bccMailtoBtn.addEventListener('click',()=>{const sel=[...document.querySelectorAll('.row-check:checked')].map(cb=>visibleRows[parseInt(cb.dataset.idx)]).filter(g=>g?.email);if(!sel.length)return;const subj=encodeURIComponent('Shores of Panama - Guest Survey Invitation');const body=encodeURIComponent('Dear Guest,\n\nThank you for staying at Shores of Panama!\n\nPlease complete our brief guest survey:\n\nhttps://survey.shorescoa.com/go\n\nThank you,\nShores of Panama COA');window.open('mailto:?bcc='+sel.map(r=>r.email).join(';')+'&subject='+subj+'&body='+body,'_blank');});
+  markSentBtn.addEventListener('click',async()=>{const sel=[...document.querySelectorAll('.row-check:checked')].map(cb=>visibleRows[parseInt(cb.dataset.idx)]).filter(Boolean);for(const g of sel){try{await apiJson('/api/guests',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:g.id,emailSent:'yes'})});g.email_sent='yes';const cell=document.getElementById('sc-'+g.id);if(cell)cell.innerHTML=sentBadge('yes');}catch(e){console.error(e);}}updateNavBadges();updateSel();});
   exportCsvBtn.addEventListener('click',()=>{
     if(!visibleRows.length) return;
     const hdr=['id','guest_name','email','unit','arrival','departure','email_sent'];
@@ -282,4 +285,8 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
 </script>
 </body>
 </html>
+
+
+
+
 
