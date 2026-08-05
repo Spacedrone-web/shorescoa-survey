@@ -1,4 +1,4 @@
----
+﻿---
 export const prerender = false;
 const authed = Astro.cookies.get("admin_auth")?.value === "shores-admin-ok";
 if (!authed) return Astro.redirect("/admin");
@@ -8,7 +8,7 @@ if (!authed) return Astro.redirect("/admin");
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Guest Email Tool · Shores of Panama</title>
+<title>Guest Email Tool Â· Shores of Panama</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,sans-serif;background:#f0f4f8;color:#1a1a2e;min-height:100vh}
@@ -62,8 +62,8 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
 <nav>
   <span class="brand">SHORES OF PANAMA &middot; Guest Email Tool</span>
   <div class="nav-right">
-    <span class="badge-pill sent-pill"   id="navSent">— Sent</span>
-    <span class="badge-pill unsent-pill" id="navUnsent">— Unsent</span>
+    <span class="badge-pill sent-pill"   id="navSent">â€” Sent</span>
+    <span class="badge-pill unsent-pill" id="navUnsent">â€” Unsent</span>
     <a href="/admin" class="nav-btn">&#8592; Survey Admin</a>
     <a href="/admin?logout=1" class="nav-btn">Logout</a>
   </div>
@@ -72,7 +72,7 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
 <main>
   <div class="controls">
     <button id="loadBtn" class="btn btn-primary">&#128100; Load Guests</button>
-    <button id="syncBtn" class="btn btn-warning">&#8635; Sync Symliv</button>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:1px"><button id="syncBtn" class="btn btn-warning">&#8635; Sync Symliv</button><small id="lastSyncText" style="color:#9ca3af;font-size:.68rem"></small></div>
     <button id="testBtn" class="btn btn-info">&#9993; Send Test Email</button>
     <select id="filterSel">
       <option value="unsent" selected>Not Sent</option>
@@ -193,7 +193,7 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
       if(!d.ok) throw new Error(d.error||'Sync failed');
       statusBar.innerHTML=`&#10003; Sync complete \u2014 ${d.inserted??0} new guest${d.inserted!==1?'s':''} added.`;
       const r2=await apiJson('/api/guests');
-      allGuests=r2.guests||[]; applyFilters();
+      allGuests=r2.guests||[]; applyFilters(); try{var _t=new Date().toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});localStorage.setItem('shores_last_sync',_t);var _e=document.getElementById('lastSyncText');if(_e)_e.textContent='Last synced: '+_t;}catch(_){}
     }catch(e){statusBar.innerHTML=`<span class="err">Sync error: ${esc(e.message)}</span>`;}
     finally{syncBtn.disabled=false;}
   });
@@ -277,8 +277,9 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
     }finally{sendTestBtn.disabled=false;}
   });
 
-  loadBtn.click();
+  try{var _ls=localStorage.getItem('shores_last_sync');var _e=document.getElementById('lastSyncText');if(_ls&&_e)_e.textContent='Last synced: '+_ls;}catch(_){}  loadBtn.click();
 })();
 </script>
 </body>
 </html>
+
