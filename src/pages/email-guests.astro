@@ -448,7 +448,7 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
 
   sendTestBtn.addEventListener('click', async () => {
     const addr = testEmailInput.value.trim();
-    if (!addr) { testResult.innerHTML = '<span class="err">Please enter an email address.</span>'; return; }\
+    if (!addr) { testResult.innerHTML = '<span class="err">Please enter an email address.</span>'; return; }
     sendTestBtn.disabled = true;
     testResult.innerHTML = '<span class="spinner"></span>&nbsp; Sending\u2026';
     try {
