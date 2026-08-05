@@ -3,6 +3,6 @@ compatibility_date = "2024-09-23"
 pages_build_output_dir = "dist"
 
 [[d1_databases]]
-binding = "DB"
+binding = "GUEST_DB"
 database_name = "shores-guests"
 database_id = "7ad29045-5cb5-4bd3-86a6-237a12b9eb35"

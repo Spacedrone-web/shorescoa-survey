@@ -61,7 +61,7 @@ export async function POST({request,cookies,locals}:APIContext){
   const cookieOk = cookies.get("admin_auth")?.value==="shores-admin-ok";
   const keyOk    = (env.SYNC_KEY??"") && request.headers.get("X-Sync-Key")===(env.SYNC_KEY??"");
   if (!cookieOk&&!keyOk) return j({ok:false,error:"Unauthorized"},401);
-  const DB = env.DB;
+  const DB = env.GUEST_DB;
   if (!DB) return j({ok:false,error:"DB not configured"},500);
   try {
     const ct = await commToken();
@@ -91,3 +91,5 @@ export async function POST({request,cookies,locals}:APIContext){
     return j({ok:true,inserted,skipped,total:filtered.length});
   } catch(err:any){ return j({ok:false,error:String(err?.message??err)},500); }
 }
+
+

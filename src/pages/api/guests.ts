@@ -5,7 +5,7 @@ const j  = (d:any,s=200)=>new Response(JSON.stringify(d),{status:s,headers:{"Con
 
 export async function GET({cookies,locals}:APIContext){
   if (cookies.get("admin_auth")?.value!==OK) return j({ok:false,error:"Unauthorized"},401);
-  const DB=(locals as any).runtime?.env?.DB;
+  const DB=(locals as any).runtime?.env?.GUEST_DB;
   if (!DB) return j({ok:false,error:"DB not configured"},500);
   try {
     const {results} = await DB.prepare(`
@@ -19,7 +19,7 @@ export async function GET({cookies,locals}:APIContext){
 
 export async function PATCH({request,cookies,locals}:APIContext){
   if (cookies.get("admin_auth")?.value!==OK) return j({ok:false,error:"Unauthorized"},401);
-  const DB=(locals as any).runtime?.env?.DB;
+  const DB=(locals as any).runtime?.env?.GUEST_DB;
   if (!DB) return j({ok:false,error:"DB not configured"},500);
   try {
     const {id,emailSent}=await request.json() as {id:number;emailSent:string};
@@ -27,3 +27,5 @@ export async function PATCH({request,cookies,locals}:APIContext){
     return j({ok:true});
   } catch(e:any){ return j({ok:false,error:String(e?.message??e)},500); }
 }
+
+
