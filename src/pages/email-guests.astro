@@ -1,4 +1,4 @@
-﻿---
+---
 export const prerender = false;
 const authed = Astro.cookies.get("admin_auth")?.value === "shores-admin-ok";
 if (!authed) return Astro.redirect("/admin");
@@ -8,7 +8,7 @@ if (!authed) return Astro.redirect("/admin");
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Guest Email Tool Â· Shores of Panama</title>
+<title>Guest Email Tool · Shores of Panama</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,sans-serif;background:#f0f4f8;color:#1a1a2e;min-height:100vh}
@@ -24,11 +24,13 @@ main{max-width:1200px;margin:1.5rem auto;padding:0 1rem}
 .controls{background:#fff;border-radius:10px;padding:1rem 1.25rem;display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:1rem}
 .controls select{padding:.4rem .7rem;border:1px solid #cbd5e1;border-radius:6px;font-size:.85rem;background:#f8fafc}
 .btn{padding:.4rem .95rem;border:none;border-radius:6px;font-size:.85rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:.35rem}
-.btn-primary{background:#2563eb;color:#fff}.btn-primary:hover{background:#1d4ed8}
-.btn-warning{background:#d97706;color:#fff}.btn-warning:hover{background:#b45309}
-.btn-secondary{background:#64748b;color:#fff}.btn-secondary:hover{background:#475569}
-.btn-info{background:#0891b2;color:#fff}.btn-info:hover{background:#0e7490}
-.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:#2563eb;color:#fff}.btn-primary:hover:not(:disabled){background:#1d4ed8}
+.btn-warning{background:#d97706;color:#fff}.btn-warning:hover:not(:disabled){background:#b45309}
+.btn-secondary{background:#64748b;color:#fff}.btn-secondary:hover:not(:disabled){background:#475569}
+.btn-info{background:#0891b2;color:#fff}.btn-info:hover:not(:disabled){background:#0e7490}
+.btn-success{background:#16a34a;color:#fff}.btn-success:hover:not(:disabled){background:#15803d}
+.btn-bcc{background:#7c3aed;color:#fff}.btn-bcc:hover:not(:disabled){background:#6d28d9}
+.btn:disabled{opacity:.4;cursor:not-allowed}
 .status-bar{background:#fff;border-radius:8px;padding:.6rem 1rem;font-size:.88rem;margin-bottom:.75rem;min-height:2.2rem;box-shadow:0 1px 3px rgba(0,0,0,.06);display:flex;align-items:center;gap:.5rem}
 .filter-note{background:#fef9c3;border:1px solid #fde047;border-radius:8px;padding:.55rem 1rem;font-size:.83rem;color:#713f12;margin-bottom:.75rem;display:none}
 .err{color:#dc2626;font-weight:600}
@@ -49,6 +51,8 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
 #noData{display:none;text-align:center;padding:2rem;color:#64748b;font-size:.95rem}
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid #cbd5e1;border-top-color:#2563eb;border-radius:50%;animation:spin .6s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+.sync-wrap{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.sync-wrap .last-sync{font-size:.7rem;color:#92400e;font-weight:400;opacity:.85}
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;align-items:center;justify-content:center}
 .modal-overlay.open{display:flex}
 .modal-box{background:#fff;border-radius:12px;padding:1.5rem 1.75rem;width:min(520px,95vw);box-shadow:0 8px 32px rgba(0,0,0,.25)}
@@ -62,8 +66,8 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
 <nav>
   <span class="brand">SHORES OF PANAMA &middot; Guest Email Tool</span>
   <div class="nav-right">
-    <span class="badge-pill sent-pill"   id="navSent">â€” Sent</span>
-    <span class="badge-pill unsent-pill" id="navUnsent">â€” Unsent</span>
+    <span class="badge-pill sent-pill"   id="navSent">— Sent</span>
+    <span class="badge-pill unsent-pill" id="navUnsent">— Unsent</span>
     <a href="/admin" class="nav-btn">&#8592; Survey Admin</a>
     <a href="/admin?logout=1" class="nav-btn">Logout</a>
   </div>
@@ -72,8 +76,18 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
 <main>
   <div class="controls">
     <button id="loadBtn" class="btn btn-primary">&#128100; Load Guests</button>
-    <div style="display:flex;flex-direction:column;align-items:center;gap:1px"><button id="syncBtn" class="btn btn-warning">&#8635; Sync Symliv</button><small id="lastSyncText" style="color:#9ca3af;font-size:.68rem"></small></div>
+
+    <div class="sync-wrap">
+      <button id="syncBtn" class="btn btn-warning">&#8635; Sync Symliv</button>
+      <span class="last-sync" id="lastSyncLabel"></span>
+    </div>
+
     <button id="testBtn" class="btn btn-info">&#9993; Send Test Email</button>
+
+    <button id="bccMailtoBtn" class="btn btn-bcc" disabled>&#128231; Open BCC Mailto</button>
+    <button id="markSentBtn"  class="btn btn-success" disabled>&#10003; Mark Selected as Sent</button>
+    <button id="exportCsvBtn" class="btn btn-secondary">&#128190; Download CSV</button>
+
     <select id="filterSel">
       <option value="unsent" selected>Not Sent</option>
       <option value="all">All Guests</option>
@@ -86,8 +100,8 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
 
   <div class="bulk-bar" id="bulkBar">
     <input type="checkbox" id="selectAll" title="Select all visible" />
-    <span id="selectedCount">0 selected</span>
-    <button class="btn btn-primary" id="bccMailtoBtn" disabled>&#9993; Open BCC Mailto</button> <button class="btn btn-warning" id="markSentBtn" disabled>&#10003; Mark as Sent</button> <button class="btn btn-secondary" id="exportCsvBtn">&#128190; Download CSV</button>
+    <label for="selectAll" style="font-size:.83rem;cursor:pointer">Select All</label>
+    <span id="selectedCount" style="flex:1;font-size:.83rem">0 selected</span>
   </div>
 
   <div class="table-wrap">
@@ -123,170 +137,327 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
 (function(){
   'use strict';
   const $ = id => document.getElementById(id);
-  const loadBtn=$('loadBtn'), syncBtn=$('syncBtn'), testBtn=$('testBtn');
-  const filterSel=$('filterSel'), statusBar=$('statusBar'), filterNote=$('filterNote');
-  const bulkBar=$('bulkBar'), selectAll=$('selectAll'), selectAllHead=$('selectAllHead');
-  const selectedCount=$('selectedCount'), exportCsvBtn=$('exportCsvBtn');
-  const guestTable=$('guestTable'), guestBody=$('guestBody'), noData=$('noData');
-  const navSent=$('navSent'), navUnsent=$('navUnsent');
-  const bccMailtoBtn=document.getElementById('bccMailtoBtn'), markSentBtn=document.getElementById('markSentBtn');
-  const testModal=$('testModal'), testEmailInput=$('testEmailInput');
-  const cancelTest=$('cancelTest'), sendTestBtn=$('sendTestBtn'), testResult=$('testResult');
 
-  let allGuests=[], visibleRows=[];
+  const loadBtn       = $('loadBtn');
+  const syncBtn       = $('syncBtn');
+  const lastSyncLabel = $('lastSyncLabel');
+  const testBtn       = $('testBtn');
+  const bccMailtoBtn  = $('bccMailtoBtn');
+  const markSentBtn   = $('markSentBtn');
+  const exportCsvBtn  = $('exportCsvBtn');
+  const filterSel     = $('filterSel');
+  const statusBar     = $('statusBar');
+  const filterNote    = $('filterNote');
+  const bulkBar       = $('bulkBar');
+  const selectAll     = $('selectAll');
+  const selectAllHead = $('selectAllHead');
+  const selectedCount = $('selectedCount');
+  const guestTable    = $('guestTable');
+  const guestBody     = $('guestBody');
+  const noData        = $('noData');
+  const navSent       = $('navSent');
+  const navUnsent     = $('navUnsent');
+  const testModal     = $('testModal');
+  const testEmailInput= $('testEmailInput');
+  const cancelTest    = $('cancelTest');
+  const sendTestBtn   = $('sendTestBtn');
+  const testResult    = $('testResult');
 
-  function cutoff(){
-    const d=new Date(); d.setDate(d.getDate()-2); return d.toISOString().slice(0,10);
+  let allGuests = [], visibleRows = [];
+
+  /* ── helpers ── */
+  function cutoff() {
+    const d = new Date();
+    d.setDate(d.getDate() - 2);
+    return d.toISOString().slice(0, 10);
   }
 
-  function esc(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function esc(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
 
-  function sentBadge(v){
-    return v==='yes'
+  function sentBadge(v) {
+    return v === 'yes'
       ? '<span class="badge-sent">&#10003; Sent</span>'
       : '<span class="badge-unsent">&#10007; Not Sent</span>';
   }
 
-  function updateNavBadges(){
-    navSent.textContent   = allGuests.filter(g=>g.email_sent==='yes').length+' Sent';
-    navUnsent.textContent = allGuests.filter(g=>g.email_sent!=='yes').length+' Unsent';
+  function updateNavBadges() {
+    navSent.textContent   = allGuests.filter(g => g.email_sent === 'yes').length + ' Sent';
+    navUnsent.textContent = allGuests.filter(g => g.email_sent !== 'yes').length + ' Unsent';
   }
 
-  function applyFilters(){
-    const cut=cutoff(), mode=filterSel.value;
-    const departed=allGuests.filter(g=>g.departure && g.departure<=cut);
-    const hidden=allGuests.length-departed.length;
-    filterNote.style.display=hidden>0?'block':'none';
-    if(hidden>0) filterNote.textContent=`\u26a0 ${hidden} guest${hidden>1?'s':''} hidden \u2014 departed within the last 2 days. They appear automatically once eligible.`;
-    visibleRows = mode==='sent'   ? departed.filter(g=>g.email_sent==='yes')
-                : mode==='unsent' ? departed.filter(g=>g.email_sent!=='yes')
-                : departed;
+  /* ── filter + render ── */
+  function applyFilters() {
+    const cut  = cutoff();
+    const mode = filterSel.value;
+    /* show only guests who have already departed (departure < cutoff) */
+    const eligible = allGuests.filter(g => g.departure && g.departure <= cut);
+    const hiddenN  = allGuests.length - eligible.length;
+    filterNote.style.display = hiddenN > 0 ? 'block' : 'none';
+    if (hiddenN > 0)
+      filterNote.textContent = '\u26a0 ' + hiddenN + ' guest' + (hiddenN > 1 ? 's' : '') +
+        ' hidden \u2014 departed within the last 2 days. They appear automatically once eligible.';
+    visibleRows = mode === 'sent'   ? eligible.filter(g => g.email_sent === 'yes')
+                : mode === 'unsent' ? eligible.filter(g => g.email_sent !== 'yes')
+                : eligible;
     renderTable(visibleRows);
     updateNavBadges();
   }
 
-  filterSel.addEventListener('change',()=>{ if(allGuests.length) applyFilters(); });
+  filterSel.addEventListener('change', () => { if (allGuests.length) applyFilters(); });
 
-  async function apiJson(url,opts){
-    const r=await fetch(url,opts);
-    const t=await r.text();
-    try{return JSON.parse(t);}catch{throw new Error('API error '+r.status);}
+  /* ── API helper ── */
+  async function apiJson(url, opts) {
+    const r = await fetch(url, opts);
+    const t = await r.text();
+    try { return JSON.parse(t); } catch { throw new Error('API error ' + r.status); }
   }
 
-  loadBtn.addEventListener('click',async()=>{
-    statusBar.innerHTML='<span class="spinner"></span>&nbsp; Loading\u2026';
-    loadBtn.disabled=true; guestTable.style.display='none'; noData.style.display='none'; bulkBar.style.display='none';
-    try{
-      const d=await apiJson('/api/guests');
-      if(!d.ok) throw new Error(d.error||'Load failed');
-      allGuests=d.guests||[];
+  /* ── Load Guests ── */
+  loadBtn.addEventListener('click', async () => {
+    statusBar.innerHTML = '<span class="spinner"></span>&nbsp; Loading\u2026';
+    loadBtn.disabled = true;
+    guestTable.style.display = 'none';
+    noData.style.display = 'none';
+    bulkBar.style.display = 'none';
+    try {
+      const d = await apiJson('/api/guests');
+      if (!d.ok) throw new Error(d.error || 'Load failed');
+      allGuests = d.guests || [];
       applyFilters();
-      statusBar.innerHTML=`Loaded <strong>${allGuests.length}</strong> total guests.`;
-    }catch(e){statusBar.innerHTML=`<span class="err">Error: ${esc(e.message)}</span>`;}
-    finally{loadBtn.disabled=false;}
+      statusBar.innerHTML = 'Loaded <strong>' + allGuests.length + '</strong> total guests.';
+    } catch(e) {
+      statusBar.innerHTML = '<span class="err">Error: ' + esc(e.message) + '</span>';
+    } finally {
+      loadBtn.disabled = false;
+    }
   });
 
-  syncBtn.addEventListener('click',async()=>{
-    statusBar.innerHTML='<span class="spinner"></span>&nbsp; Syncing from Symliv\u2026';
-    syncBtn.disabled=true;
-    try{
-      const d=await apiJson('/api/sync-guests',{method:'POST'});
-      if(!d.ok) throw new Error(d.error||'Sync failed');
-      statusBar.innerHTML=`&#10003; Sync complete \u2014 ${d.inserted??0} new guest${d.inserted!==1?'s':''} added.`;
-      const r2=await apiJson('/api/guests');
-      allGuests=r2.guests||[]; applyFilters(); try{var _t=new Date().toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});localStorage.setItem('shores_last_sync',_t);var _e=document.getElementById('lastSyncText');if(_e)_e.textContent='Last synced: '+_t;}catch(_){}
-    }catch(e){statusBar.innerHTML=`<span class="err">Sync error: ${esc(e.message)}</span>`;}
-    finally{syncBtn.disabled=false;}
+  /* ── Sync Symliv ── */
+  syncBtn.addEventListener('click', async () => {
+    statusBar.innerHTML = '<span class="spinner"></span>&nbsp; Syncing from Symliv\u2026';
+    syncBtn.disabled = true;
+    try {
+      const d = await apiJson('/api/sync-guests', { method: 'POST' });
+      if (!d.ok) throw new Error(d.error || 'Sync failed');
+      statusBar.innerHTML = '&#10003; Sync complete \u2014 ' + (d.inserted ?? 0) +
+        ' new guest' + (d.inserted !== 1 ? 's' : '') + ' added.';
+      /* update last-synced label */
+      const now = new Date();
+      lastSyncLabel.textContent = 'Last sync\u2019d: ' + now.toLocaleDateString() + ' ' +
+        now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const r2 = await apiJson('/api/guests');
+      allGuests = r2.guests || [];
+      applyFilters();
+    } catch(e) {
+      statusBar.innerHTML = '<span class="err">Sync error: ' + esc(e.message) + '</span>';
+    } finally {
+      syncBtn.disabled = false;
+    }
   });
 
-  function renderTable(rows){
-    guestBody.innerHTML='';
-    if(!rows.length){noData.style.display='block';guestTable.style.display='none';bulkBar.style.display='none';return;}
-    noData.style.display='none'; guestTable.style.display=''; bulkBar.style.display='flex';
-    rows.forEach((g,i)=>{
-      const has=!!g.email, sent=g.email_sent==='yes';
-      const tr=document.createElement('tr'); tr.dataset.idx=i;
-      tr.innerHTML=`
-        <td><input type="checkbox" class="row-check" data-idx="${i}" ${has?'':'disabled'}/></td>
-        <td>${esc(g.guest_name)}</td>
-        <td>${has?esc(g.email):'<span class="no-email">no email</span>'}</td>
-        <td>${esc(g.unit)}</td>
-        <td>${esc(g.arrival)}</td>
-        <td>${esc(g.departure)}</td>
-        <td id="sc-${g.id}">${sentBadge(g.email_sent)}</td>
-        <td>${has?`<button class="send-btn" data-id="${g.id}" data-idx="${i}">${sent?'Resend':'Send'}</button>`:'&mdash;'}</td>`;
+  /* ── Render table ── */
+  function renderTable(rows) {
+    guestBody.innerHTML = '';
+    if (!rows.length) {
+      noData.style.display = 'block';
+      guestTable.style.display = 'none';
+      bulkBar.style.display = 'none';
+      bccMailtoBtn.disabled = true;
+      markSentBtn.disabled  = true;
+      return;
+    }
+    noData.style.display = 'none';
+    guestTable.style.display = '';
+    bulkBar.style.display = 'flex';
+
+    rows.forEach((g, i) => {
+      const has  = !!g.email;
+      const sent = g.email_sent === 'yes';
+      const tr   = document.createElement('tr');
+      tr.dataset.idx = i;
+      tr.innerHTML =
+        '<td><input type="checkbox" class="row-check" data-idx="' + i + '"' + (has ? '' : ' disabled') + '/></td>' +
+        '<td>' + esc(g.guest_name) + '</td>' +
+        '<td>' + (has ? esc(g.email) : '<span class="no-email">no email</span>') + '</td>' +
+        '<td>' + esc(g.unit) + '</td>' +
+        '<td>' + esc(g.arrival) + '</td>' +
+        '<td>' + esc(g.departure) + '</td>' +
+        '<td id="sc-' + g.id + '">' + sentBadge(g.email_sent) + '</td>' +
+        '<td>' + (has ? '<button class="send-btn" data-id="' + g.id + '" data-idx="' + i + '">' + (sent ? 'Resend' : 'Send') + '</button>' : '&mdash;') + '</td>';
       guestBody.appendChild(tr);
     });
-    document.querySelectorAll('.row-check').forEach(c=>c.addEventListener('change',updateSel));
-    document.querySelectorAll('.send-btn').forEach(b=>b.addEventListener('click',onSend));
-    selectAll.checked=false; selectAllHead.checked=false; updateSel();
-  }
 
-  function updateSel(){
-    const n=document.querySelectorAll('.row-check:checked').length;
-    selectedCount.textContent=n+' selected';
-  }
-
-  function syncChecks(v){
-    document.querySelectorAll('.row-check:not([disabled])').forEach(c=>{c.checked=v;});
+    document.querySelectorAll('.row-check').forEach(c => c.addEventListener('change', updateSel));
+    document.querySelectorAll('.send-btn').forEach(b => b.addEventListener('click', onSend));
+    selectAll.checked = false;
+    selectAllHead.checked = false;
     updateSel();
   }
-  selectAll.addEventListener('change',()=>syncChecks(selectAll.checked));
-  selectAllHead.addEventListener('change',()=>{selectAll.checked=selectAllHead.checked;syncChecks(selectAllHead.checked);});
 
-  async function onSend(e){
-    const btn=e.currentTarget, id=parseInt(btn.dataset.id), idx=parseInt(btn.dataset.idx), g=visibleRows[idx];
-    if(!g?.email) return;
-    btn.disabled=true; btn.textContent='Sending\u2026';
-    try{
-      const d=await apiJson('/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:g.email,name:g.guest_name})});
-      if(!d.ok) throw new Error(d.error||'Send failed');
-      await apiJson('/api/guests',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,emailSent:'yes'})});
-      g.email_sent='yes';
-      const cell=$('sc-'+id); if(cell) cell.innerHTML=sentBadge('yes');
-      btn.textContent='&#10003; Sent'; btn.disabled=false;
+  /* ── updateSel — enables/disables BCC + Mark Sent ── */
+  function updateSel() {
+    const n = document.querySelectorAll('.row-check:checked').length;
+    selectedCount.textContent = n + ' selected';
+    bccMailtoBtn.disabled = (n === 0);
+    markSentBtn.disabled  = (n === 0);
+  }
+
+  function syncChecks(v) {
+    document.querySelectorAll('.row-check:not([disabled])').forEach(c => { c.checked = v; });
+    updateSel();
+  }
+  selectAll.addEventListener('change', () => syncChecks(selectAll.checked));
+  selectAllHead.addEventListener('change', () => {
+    selectAll.checked = selectAllHead.checked;
+    syncChecks(selectAllHead.checked);
+  });
+
+  /* ── Open BCC Mailto ── */
+  bccMailtoBtn.addEventListener('click', () => {
+    const checked = document.querySelectorAll('.row-check:checked');
+    const emails  = [];
+    checked.forEach(c => {
+      const idx = parseInt(c.dataset.idx);
+      const g   = visibleRows[idx];
+      if (g && g.email) emails.push(g.email);
+    });
+    if (!emails.length) return;
+    /* build mailto with all addresses in BCC */
+    const bcc     = emails.join(',');
+    const subject = encodeURIComponent('Your Experience at Shores of Panama');
+    const body    = encodeURIComponent(
+      'Dear Guest,\r\n\r\n' +
+      'Thank you for staying at Shores of Panama!\r\n' +
+      'We hope you had a wonderful visit.\r\n\r\n' +
+      'We would love to hear about your experience.\r\n' +
+      'Please take a moment to complete our brief guest survey:\r\n' +
+      'https://survey.shorescoa.com/go\r\n\r\n' +
+      'Your feedback helps us continue to improve the property and services for all guests.\r\n\r\n' +
+      'Thank you,\r\n' +
+      'Shores of Panama COA'
+    );
+    window.location.href = 'mailto:?bcc=' + encodeURIComponent(bcc) +
+      '&subject=' + subject + '&body=' + body;
+  });
+
+  /* ── Mark Selected as Sent ── */
+  markSentBtn.addEventListener('click', async () => {
+    const checked = document.querySelectorAll('.row-check:checked');
+    if (!checked.length) return;
+    markSentBtn.disabled = true;
+    markSentBtn.textContent = 'Marking\u2026';
+    let done = 0, failed = 0;
+    for (const c of checked) {
+      const idx = parseInt(c.dataset.idx);
+      const g   = visibleRows[idx];
+      if (!g) continue;
+      try {
+        await apiJson('/api/guests', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: g.id, emailSent: 'yes' })
+        });
+        g.email_sent = 'yes';
+        const cell = $('sc-' + g.id);
+        if (cell) cell.innerHTML = sentBadge('yes');
+        done++;
+      } catch { failed++; }
+    }
+    updateNavBadges();
+    markSentBtn.textContent = '\u2713 Mark Selected as Sent';
+    markSentBtn.disabled = false;
+    statusBar.innerHTML = '\u2713 Marked <strong>' + done + '</strong> guest' +
+      (done !== 1 ? 's' : '') + ' as sent' +
+      (failed ? ' <span class="err">(' + failed + ' failed)</span>' : '') + '.';
+    /* uncheck all */
+    syncChecks(false);
+    selectAll.checked = false;
+    selectAllHead.checked = false;
+  });
+
+  /* ── Individual Send ── */
+  async function onSend(e) {
+    const btn = e.currentTarget;
+    const id  = parseInt(btn.dataset.id);
+    const idx = parseInt(btn.dataset.idx);
+    const g   = visibleRows[idx];
+    if (!g?.email) return;
+    btn.disabled = true;
+    btn.textContent = 'Sending\u2026';
+    try {
+      const d = await apiJson('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: g.email, name: g.guest_name })
+      });
+      if (!d.ok) throw new Error(d.error || 'Send failed');
+      await apiJson('/api/guests', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, emailSent: 'yes' })
+      });
+      g.email_sent = 'yes';
+      const cell = $('sc-' + id);
+      if (cell) cell.innerHTML = sentBadge('yes');
+      btn.textContent = '\u2713 Sent';
+      btn.disabled = false;
       updateNavBadges();
-    }catch(err){
-      btn.textContent='Retry'; btn.disabled=false;
-      statusBar.innerHTML=`<span class="err">Send failed for ${esc(g.email)}: ${esc(err.message)}</span>`;
+    } catch(err) {
+      btn.textContent = 'Retry';
+      btn.disabled = false;
+      statusBar.innerHTML = '<span class="err">Send failed for ' + esc(g.email) + ': ' + esc(err.message) + '</span>';
     }
   }
 
-  bccMailtoBtn.addEventListener('click',()=>{const sel=[...document.querySelectorAll('.row-check:checked')].map(cb=>visibleRows[parseInt(cb.dataset.idx)]).filter(g=>g?.email);if(!sel.length)return;const subj=encodeURIComponent('Shores of Panama - Guest Survey Invitation');const body=encodeURIComponent('Dear Guest,\n\nThank you for staying at Shores of Panama!\n\nPlease complete our brief guest survey:\n\nhttps://survey.shorescoa.com/go\n\nThank you,\nShores of Panama COA');window.open('mailto:?bcc='+sel.map(r=>r.email).join(';')+'&subject='+subj+'&body='+body,'_blank');});
-  markSentBtn.addEventListener('click',async()=>{const sel=[...document.querySelectorAll('.row-check:checked')].map(cb=>visibleRows[parseInt(cb.dataset.idx)]).filter(Boolean);for(const g of sel){try{await apiJson('/api/guests',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:g.id,emailSent:'yes'})});g.email_sent='yes';const cell=document.getElementById('sc-'+g.id);if(cell)cell.innerHTML=sentBadge('yes');}catch(e){console.error(e);}}updateNavBadges();updateSel();});
-  exportCsvBtn.addEventListener('click',()=>{
-    if(!visibleRows.length) return;
-    const hdr=['id','guest_name','email','unit','arrival','departure','email_sent'];
-    const lines=[hdr.join(','),...visibleRows.map(g=>hdr.map(h=>`"${String(g[h]??'').replace(/"/g,'""')}"`).join(','))];
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(new Blob([lines.join('\r\n')],{type:'text/csv'}));
-    a.download='shores-guests-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+  /* ── Download CSV ── */
+  exportCsvBtn.addEventListener('click', () => {
+    if (!visibleRows.length) return;
+    const hdr   = ['id','guest_name','email','unit','arrival','departure','email_sent'];
+    const lines = [
+      hdr.join(','),
+      ...visibleRows.map(g => hdr.map(h => '"' + String(g[h] ?? '').replace(/"/g, '""') + '"').join(','))
+    ];
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([lines.join('\r\n')], { type: 'text/csv' }));
+    a.download = 'shores-guests-' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.click();
   });
 
-  testBtn.addEventListener('click',()=>{testEmailInput.value='';testResult.textContent='';testModal.classList.add('open');testEmailInput.focus();});
-  cancelTest.addEventListener('click',()=>testModal.classList.remove('open'));
-  testModal.addEventListener('click',e=>{if(e.target===testModal)testModal.classList.remove('open');});
+  /* ── Test Email Modal ── */
+  testBtn.addEventListener('click', () => {
+    testEmailInput.value = '';
+    testResult.textContent = '';
+    testModal.classList.add('open');
+    testEmailInput.focus();
+  });
+  cancelTest.addEventListener('click', () => testModal.classList.remove('open'));
+  testModal.addEventListener('click', e => { if (e.target === testModal) testModal.classList.remove('open'); });
 
-  sendTestBtn.addEventListener('click',async()=>{
-    const addr=testEmailInput.value.trim();
-    if(!addr){testResult.innerHTML='<span class="err">Please enter an email address.</span>';return;}
-    sendTestBtn.disabled=true; testResult.innerHTML='<span class="spinner"></span>&nbsp; Sending\u2026';
-    try{
-      const d=await apiJson('/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:addr,name:'Test Guest',test:true})});
-      if(!d.ok) throw new Error(d.error||'Failed');
-      testResult.innerHTML=`<span style="color:#16a34a">&#10003; Test sent to <strong>${esc(addr)}</strong></span>`;
-    }catch(err){
-      testResult.innerHTML=`<span class="err">&#10007; ${esc(err.message)}</span>`;
-    }finally{sendTestBtn.disabled=false;}
+  sendTestBtn.addEventListener('click', async () => {
+    const addr = testEmailInput.value.trim();
+    if (!addr) { testResult.innerHTML = '<span class="err">Please enter an email address.</span>'; return; }
+    sendTestBtn.disabled = true;
+    testResult.innerHTML = '<span class="spinner"></span>&nbsp; Sending\u2026';
+    try {
+      const d = await apiJson('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: addr, name: 'Test Guest', test: true })
+      });
+      if (!d.ok) throw new Error(d.error || 'Failed');
+      testResult.innerHTML = '<span style="color:#16a34a">&#10003; Test sent to <strong>' + esc(addr) + '</strong></span>';
+    } catch(err) {
+      testResult.innerHTML = '<span class="err">&#10007; ' + esc(err.message) + '</span>';
+    } finally {
+      sendTestBtn.disabled = false;
+    }
   });
 
-  try{var _ls=localStorage.getItem('shores_last_sync');var _e=document.getElementById('lastSyncText');if(_ls&&_e)_e.textContent='Last synced: '+_ls;}catch(_){}  loadBtn.click();
+  /* ── Auto-load on page open ── */
+  loadBtn.click();
 })();
 </script>
 </body>
 </html>
-
-
-
-
-
