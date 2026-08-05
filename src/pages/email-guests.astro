@@ -465,7 +465,20 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
       sendTestBtn.disabled = false;
     }
   });
+  
+  async function refreshLastSynced() {
+    try {
+      const m = await apiJson('/api/meta');
+      if (m?.lastSynced) {
+        lastSynced.textContent = m.lastSynced;
+      }
+    } catch (err) {
+      console.error('Failed to refresh lastSynced', err);
+    }
+  }
 
+  setInterval(refreshLastSynced, 60000);
+  
   /* ── Auto-load on page open ── */
   loadBtn.click();
 })();
