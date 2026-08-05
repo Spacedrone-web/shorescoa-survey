@@ -58,7 +58,7 @@ export async function POST({ request, cookies, locals }: APIContext) {
       })
     });
     const tokenData = await tokenRes.json() as any;
-    const communityToken = tokenData?.data?.getCommunityToken;
+    const communityToken = tokenData?.data?.getCommunityToken?.token;
     if (!communityToken) return j({ ok: false, error: 'Failed to get community token' }, 500);
 
     // Step 2: user token
@@ -128,3 +128,4 @@ export async function POST({ request, cookies, locals }: APIContext) {
     return j({ ok: false, error: String(err?.message ?? err) }, 500);
   }
 }
+
