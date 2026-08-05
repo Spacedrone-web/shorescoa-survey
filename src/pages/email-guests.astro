@@ -52,7 +52,7 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid #cbd5e1;border-top-color:#2563eb;border-radius:50%;animation:spin .6s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .sync-wrap{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
-.sync-wrap .last-sync{font-size:.7rem;color:#92400e;font-weight:400;opacity:.85}
+.sync-wrap .last-sync{font-size:.7rem;color:#92400e;font-weight:400;opacity:.85;min-height:.9rem}
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;align-items:center;justify-content:center}
 .modal-overlay.open{display:flex}
 .modal-box{background:#fff;border-radius:12px;padding:1.5rem 1.75rem;width:min(520px,95vw);box-shadow:0 8px 32px rgba(0,0,0,.25)}
@@ -187,11 +187,20 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
     navUnsent.textContent = allGuests.filter(g => g.email_sent !== 'yes').length + ' Unsent';
   }
 
+  /* ── format ISO timestamp nicely ── */
+  function fmtSync(iso) {
+    if (!iso) return '';
+    try {
+      const d = new Date(iso);
+      return 'Last sync\u2019d: ' + d.toLocaleDateString() + ' ' +
+        d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch { return ''; }
+  }
+
   /* ── filter + render ── */
   function applyFilters() {
     const cut  = cutoff();
     const mode = filterSel.value;
-    /* show only guests who have already departed (departure < cutoff) */
     const eligible = allGuests.filter(g => g.departure && g.departure <= cut);
     const hiddenN  = allGuests.length - eligible.length;
     filterNote.style.display = hiddenN > 0 ? 'block' : 'none';
@@ -225,6 +234,10 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
       const d = await apiJson('/api/guests');
       if (!d.ok) throw new Error(d.error || 'Load failed');
       allGuests = d.guests || [];
+      /* ── KEY FIX: show last_synced from DB (written by auto-sync OR manual sync) ── */
+      if (d.lastSynced && lastSyncLabel) {
+        lastSyncLabel.textContent = fmtSync(d.lastSynced);
+      }
       applyFilters();
       statusBar.innerHTML = 'Loaded <strong>' + allGuests.length + '</strong> total guests.';
     } catch(e) {
@@ -243,10 +256,10 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
       if (!d.ok) throw new Error(d.error || 'Sync failed');
       statusBar.innerHTML = '&#10003; Sync complete \u2014 ' + (d.inserted ?? 0) +
         ' new guest' + (d.inserted !== 1 ? 's' : '') + ' added.';
-      /* update last-synced label */
-      const now = new Date();
-      lastSyncLabel.textContent = 'Last sync\u2019d: ' + now.toLocaleDateString() + ' ' +
-        now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      /* update label from the server-written timestamp */
+      if (d.last_synced && lastSyncLabel) {
+        lastSyncLabel.textContent = fmtSync(d.last_synced);
+      }
       const r2 = await apiJson('/api/guests');
       allGuests = r2.guests || [];
       applyFilters();
@@ -324,9 +337,8 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
       if (g && g.email) emails.push(g.email);
     });
     if (!emails.length) return;
-    /* build mailto with all addresses in BCC */
     const bcc     = emails.join(',');
-    const subject = encodeURIComponent('Your Experience at Shores of Panama, noreply');
+    const subject = encodeURIComponent('Your Experience at Shores of Panama');
     const body    = encodeURIComponent(
       'Dear Guest,\r\n\r\n' +
       'Thank you for staying at Shores of Panama!\r\n' +
@@ -366,12 +378,11 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
       } catch { failed++; }
     }
     updateNavBadges();
-    markSentBtn.textContent = '\u2713 Mark Selected as Sent';
+    markSentBtn.innerHTML = '\u2713 Mark Selected as Sent';
     markSentBtn.disabled = false;
     statusBar.innerHTML = '\u2713 Marked <strong>' + done + '</strong> guest' +
       (done !== 1 ? 's' : '') + ' as sent' +
       (failed ? ' <span class="err">(' + failed + ' failed)</span>' : '') + '.';
-    /* uncheck all */
     syncChecks(false);
     selectAll.checked = false;
     selectAllHead.checked = false;
@@ -437,7 +448,7 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
 
   sendTestBtn.addEventListener('click', async () => {
     const addr = testEmailInput.value.trim();
-    if (!addr) { testResult.innerHTML = '<span class="err">Please enter an email address.</span>'; return; }
+    if (!addr) { testResult.innerHTML = '<span class="err">Please enter an email address.</span>'; return; }\
     sendTestBtn.disabled = true;
     testResult.innerHTML = '<span class="spinner"></span>&nbsp; Sending\u2026';
     try {
