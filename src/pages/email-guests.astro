@@ -1,13 +1,9 @@
----
+﻿---
 export const prerender = false;
-
-const AUTH_COOKIE = 'admin_auth';
-const AUTH_TOKEN  = 'shores-admin-ok';
-
+const AUTH_COOKIE = "admin_auth";
+const AUTH_TOKEN  = "shores-admin-ok";
 const authed = Astro.cookies.get(AUTH_COOKIE)?.value === AUTH_TOKEN;
-if (!authed) {
-  return Astro.redirect('/admin');
-}
+if (!authed) return Astro.redirect("/admin");
 ---
 <!DOCTYPE html>
 <html lang="en">
@@ -17,51 +13,57 @@ if (!authed) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f4f8;min-height:100vh}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f4f8;min-height:100vh}
     .header{background:#0a2744;color:#fff;padding:.9rem 1.5rem;display:flex;align-items:center;justify-content:space-between}
     .header h1{font-size:1.25rem;font-weight:800;letter-spacing:1px}
     .header-right{display:flex;align-items:center;gap:.75rem}
-    .btn-sm{padding:.35rem .9rem;border-radius:6px;font-size:.82rem;font-weight:700;cursor:pointer;border:none;letter-spacing:.4px;transition:background .2s;text-decoration:none;display:inline-block}
+    .btn-sm{padding:.35rem .9rem;border-radius:6px;font-size:.82rem;font-weight:700;cursor:pointer;border:none;letter-spacing:.4px;text-decoration:none;display:inline-block}
     .btn-secondary{background:rgba(255,255,255,.15);color:#fff}
     .btn-secondary:hover{background:rgba(255,255,255,.28)}
     .controls{background:#fff;border-bottom:1px solid #e2e8f0;padding:1rem 1.5rem;display:flex;flex-wrap:wrap;gap:.9rem;align-items:flex-end}
     .ctrl-group{display:flex;flex-direction:column;gap:.25rem}
     .ctrl-group label{font-size:.75rem;font-weight:700;color:#4a5568;text-transform:uppercase;letter-spacing:.5px}
-    .ctrl-group input[type=date]{padding:.45rem .7rem;border:1.5px solid #cbd5e0;border-radius:7px;font-size:.9rem;color:#2d3748;outline:none;transition:border .2s}
-    .ctrl-group input[type=date]:focus{border-color:#0a2744}
-    .btn-primary{padding:.5rem 1.4rem;background:#0a2744;color:#fff;border:none;border-radius:7px;font-size:.9rem;font-weight:700;cursor:pointer;transition:background .2s;align-self:flex-end}
+    .ctrl-group select,.ctrl-group input[type=date]{padding:.45rem .7rem;border:1.5px solid #cbd5e0;border-radius:7px;font-size:.9rem;color:#2d3748;outline:none}
+    .btn-primary{padding:.5rem 1.4rem;background:#0a2744;color:#fff;border:none;border-radius:7px;font-size:.9rem;font-weight:700;cursor:pointer;align-self:flex-end}
     .btn-primary:hover{background:#163d6b}
     .btn-primary:disabled{opacity:.5;cursor:not-allowed}
+    .btn-sync{padding:.5rem 1.2rem;background:#276749;color:#fff;border:none;border-radius:7px;font-size:.9rem;font-weight:700;cursor:pointer;align-self:flex-end}
+    .btn-sync:hover{background:#22543d}
+    .btn-sync:disabled{opacity:.5;cursor:not-allowed}
     .status-bar{padding:.55rem 1.5rem;font-size:.84rem;color:#4a5568;background:#edf2f7;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:1rem;min-height:2.2rem}
     .spinner{width:14px;height:14px;border:2px solid #0a2744;border-top-color:transparent;border-radius:50%;display:inline-block;animation:spin .7s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
     .badge{background:#0a2744;color:#fff;border-radius:12px;padding:.1rem .6rem;font-size:.78rem;font-weight:700}
+    .badge-green{background:#276749}
     .err{color:#c53030}
+    .bulk-bar{padding:.65rem 1.5rem;background:#fff;border-bottom:1px solid #e2e8f0;display:flex;flex-wrap:wrap;gap:.75rem;align-items:center}
+    .bulk-bar label{font-size:.84rem;color:#4a5568;display:flex;align-items:center;gap:.4rem;cursor:pointer}
+    .btn-green{padding:.45rem 1.1rem;background:#276749;color:#fff;border:none;border-radius:7px;font-size:.84rem;font-weight:700;cursor:pointer}
+    .btn-green:hover{background:#22543d}
+    .btn-green:disabled{opacity:.5;cursor:not-allowed}
+    .btn-orange{padding:.45rem 1.1rem;background:#c05621;color:#fff;border:none;border-radius:7px;font-size:.84rem;font-weight:700;cursor:pointer}
+    .btn-orange:hover{background:#9c4221}
+    .btn-orange:disabled{opacity:.5;cursor:not-allowed}
+    .btn-csv{padding:.45rem 1.1rem;background:#553c9a;color:#fff;border:none;border-radius:7px;font-size:.84rem;font-weight:700;cursor:pointer}
+    .btn-csv:hover{background:#44337a}
     .table-wrap{overflow-x:auto;padding:1rem 1.5rem}
     table{width:100%;border-collapse:collapse;font-size:.84rem;background:#fff;border-radius:10px;box-shadow:0 1px 8px rgba(0,0,0,.07);overflow:hidden}
     thead th{background:#0a2744;color:#fff;padding:.6rem .75rem;text-align:center;white-space:nowrap;font-size:.78rem;letter-spacing:.4px;position:sticky;top:0;z-index:2}
     tbody tr:nth-child(even){background:#f7fafc}
     tbody tr:hover{background:#ebf4ff}
+    tbody tr.sent-row{opacity:.6}
     tbody td{padding:.5rem .75rem;border-bottom:1px solid #e2e8f0;text-align:center;vertical-align:middle}
     tbody td.left{text-align:left}
     .no-data{padding:3rem;text-align:center;color:#718096;font-size:.95rem}
-    .email-link{display:inline-block;padding:.25rem .7rem;background:#2b6cb0;color:#fff;border-radius:5px;font-size:.78rem;font-weight:700;text-decoration:none;white-space:nowrap;transition:background .2s}
+    .email-link{display:inline-block;padding:.25rem .7rem;background:#2b6cb0;color:#fff;border-radius:5px;font-size:.78rem;font-weight:700;text-decoration:none;white-space:nowrap;cursor:pointer}
     .email-link:hover{background:#2c5282}
-    .no-email{color:#a0aec0;font-size:.8rem;font-style:italic}
-    .bulk-bar{padding:.65rem 1.5rem;background:#fff;border-bottom:1px solid #e2e8f0;display:flex;flex-wrap:wrap;gap:.75rem;align-items:center}
-    .bulk-bar label{font-size:.84rem;color:#4a5568;display:flex;align-items:center;gap:.4rem;cursor:pointer}
-    .bulk-bar span{font-size:.84rem;color:#4a5568}
-    .btn-green{padding:.45rem 1.1rem;background:#276749;color:#fff;border:none;border-radius:7px;font-size:.84rem;font-weight:700;cursor:pointer;transition:background .2s}
-    .btn-green:hover{background:#22543d}
-    .btn-green:disabled{opacity:.5;cursor:not-allowed}
-    .btn-csv{padding:.45rem 1.1rem;background:#553c9a;color:#fff;border:none;border-radius:7px;font-size:.84rem;font-weight:700;cursor:pointer;transition:background .2s}
-    .btn-csv:hover{background:#44337a}
+    .sent-badge{display:inline-block;padding:.2rem .55rem;border-radius:10px;font-size:.73rem;font-weight:700;background:#c6f6d5;color:#22543d}
+    .unsent-badge{display:inline-block;padding:.2rem .55rem;border-radius:10px;font-size:.73rem;font-weight:700;background:#fed7d7;color:#742a2a}
     .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:100}
     .modal-overlay.open{display:flex}
     .modal{background:#fff;border-radius:14px;box-shadow:0 8px 40px rgba(0,0,0,.2);padding:2rem;max-width:620px;width:calc(100% - 2rem)}
     .modal h2{font-size:1.1rem;font-weight:800;color:#0a2744;margin-bottom:1rem}
-    .modal textarea{width:100%;height:160px;border:1.5px solid #cbd5e0;border-radius:8px;padding:.65rem .9rem;font-size:.88rem;resize:vertical;outline:none;transition:border .2s;font-family:inherit}
-    .modal textarea:focus{border-color:#0a2744}
+    .modal textarea{width:100%;height:160px;border:1.5px solid #cbd5e0;border-radius:8px;padding:.65rem .9rem;font-size:.88rem;resize:vertical;outline:none;font-family:inherit}
     .modal-actions{display:flex;gap:.75rem;justify-content:flex-end;margin-top:1rem}
     .btn-cancel{padding:.5rem 1.1rem;background:#e2e8f0;color:#4a5568;border:none;border-radius:7px;font-size:.88rem;font-weight:700;cursor:pointer}
     .btn-send{padding:.5rem 1.3rem;background:#0a2744;color:#fff;border:none;border-radius:7px;font-size:.88rem;font-weight:700;cursor:pointer}
@@ -72,261 +74,265 @@ if (!authed) {
 <div class="header">
   <h1>SHORES OF PANAMA &nbsp;·&nbsp; Guest Email Tool</h1>
   <div class="header-right">
-    <a href="/admin" class="btn-sm btn-secondary">← Survey Admin</a>
-    <span id="emailCount" class="btn-sm btn-secondary" style="pointer-events:none;display:none"></span>    <a href="/admin?logout=1" class="btn-sm btn-secondary">Logout</a>
+    <span id="emailCount" class="btn-sm btn-secondary" style="pointer-events:none;display:none"></span>
+    <a href="/admin" class="btn-sm btn-secondary">&#8592; Survey Admin</a>
+    <a href="/admin?logout=1" class="btn-sm btn-secondary">Logout</a>
   </div>
 </div>
+
 <div class="controls">
   <div class="ctrl-group">
-    <label>Start Date — From</label>
-    <input type="date" id="startBegin" />
-  </div>
-  <div class="ctrl-group">
-    <label>Start Date — To</label>
-    <input type="date" id="startEnd" />
-  </div>
-  <div class="ctrl-group">
-    <label>Pass Type</label>
-    <select id="passTypeFilter" style="padding:.45rem .7rem;border:1.5px solid #cbd5e0;border-radius:7px;font-size:.9rem;color:#2d3748;outline:none">
-      <option value="Registration Fee">Registration Fee</option>
-      <option value="Guest Wristband">Guest Wristband</option>
-      <option value="">All Types</option>
+    <label>Show</label>
+    <select id="filterSent">
+      <option value="all">All Guests</option>
+      <option value="no">Not Sent</option>
+      <option value="yes">Sent</option>
     </select>
   </div>
-  <button class="btn-primary" id="fetchBtn">Fetch Guests</button>
+  <button class="btn-primary" id="loadBtn">Load Guests</button>
+  <button class="btn-sync" id="syncBtn">&#8635; Sync Symliv</button>
 </div>
-<div class="status-bar" id="statusBar">Enter a date range and click Fetch Guests.</div>
+
+<div class="status-bar" id="statusBar">Click Load Guests to view the database, or Sync Symliv to pull new registrations.</div>
+
 <div class="bulk-bar" id="bulkBar" style="display:none">
   <label><input type="checkbox" id="selectAll" /> Select All</label>
   <span id="selectedCount">0 selected</span>
-  <button class="btn-green" id="openMailtoBtn" disabled>Open Mailto (selected)</button>
-  <button class="btn-csv" id="exportCsvBtn">Download CSV</button>
+  <button class="btn-green"  id="openMailtoBtn" disabled>Open BCC Mailto</button>
+  <button class="btn-orange" id="markSentBtn"   disabled>&#10003; Mark Selected as Sent</button>
+  <button class="btn-csv"    id="exportCsvBtn">Download CSV</button>
 </div>
+
 <div class="table-wrap">
   <table id="guestTable" style="display:none">
     <thead>
       <tr>
         <th></th>
-        <th>First Name</th>
-        <th>Last Name</th>
+        <th>Guest Name</th>
         <th>Email</th>
         <th>Unit / Address</th>
-        <th>Start Date</th>
-        <th>End Date</th>
-        <th>Pass Type</th>
-        <th>Status</th>
-        <th>Send Survey</th>
+        <th>Arrival</th>
+        <th>Departure</th>
+        <th>Email Sent</th>
+        <th>Action</th>
       </tr>
     </thead>
     <tbody id="guestBody"></tbody>
   </table>
-  <div class="no-data" id="noData" style="display:none">No guest passes found for the selected date range.</div>
+  <div class="no-data" id="noData" style="display:none">No guests found.</div>
 </div>
+
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal">
     <h2>Compose Survey Invitation</h2>
     <p style="font-size:.84rem;color:#4a5568;margin-bottom:.75rem">
-      Edit the email body below. Subject and recipients are set automatically.
-      <strong id="modalRecipCount"></strong>
+      Edit the body below — <strong id="modalRecipCount"></strong> recipients will be BCC'd.
+      After sending, they will be marked as Sent automatically.
     </p>
     <textarea id="emailBody"></textarea>
     <div class="modal-actions">
       <button class="btn-cancel" id="cancelModal">Cancel</button>
-      <button class="btn-send" id="openMailtoFinal">Open in Email Client</button>
+      <button class="btn-send"   id="sendMailtoFinal">Open in Email Client &amp; Mark Sent</button>
     </div>
   </div>
 </div>
+
 <script>
-(function () {
-  const SURVEY_URL = 'https://survey.shorescoa.com/go';
-  const DEFAULT_BODY = `Dear {NAME},
+(function(){
+  const SURVEY_URL = "https://survey.shorescoa.com/go";
+  const DEFAULT_SUBJECT = "Shores of Panama \u2013 We\u2019d Love Your Feedback!";
+  const DEFAULT_BODY = `Dear Guest,\n\nThank you for staying at Shores of Panama! We hope you had a wonderful visit.\n\nWe would love to hear about your experience. Please take a moment to complete our brief guest survey:\n\n${SURVEY_URL}\n\nYour feedback helps us continue to improve the property and services for all guests.\n\nThank you,\nShores of Panama COA`;
 
-Thank you for staying at Shores of Panama! We hope you had a wonderful visit.
+  let allGuests = [];
+  let visibleGuests = [];
 
-We would love to hear about your experience. Please take a moment to complete our brief guest survey:
+  const loadBtn       = document.getElementById("loadBtn");
+  const syncBtn       = document.getElementById("syncBtn");
+  const statusBar     = document.getElementById("statusBar");
+  const guestTable    = document.getElementById("guestTable");
+  const guestBody     = document.getElementById("guestBody");
+  const noData        = document.getElementById("noData");
+  const bulkBar       = document.getElementById("bulkBar");
+  const selectAll     = document.getElementById("selectAll");
+  const selectedCount = document.getElementById("selectedCount");
+  const openMailtoBtn = document.getElementById("openMailtoBtn");
+  const markSentBtn   = document.getElementById("markSentBtn");
+  const exportCsvBtn  = document.getElementById("exportCsvBtn");
+  const filterSent    = document.getElementById("filterSent");
+  const modalOverlay  = document.getElementById("modalOverlay");
+  const cancelModal   = document.getElementById("cancelModal");
+  const sendFinal     = document.getElementById("sendMailtoFinal");
+  const emailBodyTA   = document.getElementById("emailBody");
+  const modalRecip    = document.getElementById("modalRecipCount");
+  const emailCount    = document.getElementById("emailCount");
 
-${SURVEY_URL}
+  function esc(s){ return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 
-Your feedback helps us continue to improve the property and services for all guests.
+  function sentBadge(v){ return v==="yes" ? '<span class="sent-badge">&#10003; Sent</span>' : '<span class="unsent-badge">&#10007; Not Sent</span>'; }
 
-Thank you,
-Shores of Panama COA`;
-
-  let filteredRows = [];
-
-  const fetchBtn        = document.getElementById('fetchBtn');
-  const statusBar       = document.getElementById('statusBar');
-  const guestTable      = document.getElementById('guestTable');
-  const guestBody       = document.getElementById('guestBody');
-  const noData          = document.getElementById('noData');
-  const bulkBar         = document.getElementById('bulkBar');
-  const selectAll       = document.getElementById('selectAll');
-  const selectedCount   = document.getElementById('selectedCount');
-  const openMailtoBtn   = document.getElementById('openMailtoBtn');
-  const exportCsvBtn    = document.getElementById('exportCsvBtn');
-  const modalOverlay    = document.getElementById('modalOverlay');
-  const cancelModal     = document.getElementById('cancelModal');
-  const openMailtoFinal = document.getElementById('openMailtoFinal');
-  const emailBodyTA     = document.getElementById('emailBody');
-  const modalRecipCount = document.getElementById('modalRecipCount');
-
-  fetchBtn.addEventListener('click', async () => {
-    const startBegin = document.getElementById('startBegin').value;
-    const startEnd   = document.getElementById('startEnd').value;
-    statusBar.innerHTML = '<span class="spinner"></span>&nbsp; Fetching from Symliv…';
-    fetchBtn.disabled = true;
-    guestTable.style.display = 'none';
-    noData.style.display = 'none';
-    bulkBar.style.display = 'none';
-    try {
-      let url = '/api/symliv-passes';
-      const params = new URLSearchParams();
-      if (startBegin) params.set('startBegin', startBegin);
-      if (startEnd)   params.set('startEnd',   startEnd);
-      if ([...params].length) url += '?' + params.toString();
-      const resp = await fetch(url);
-      const text = await resp.text();
-      let json; try { json = JSON.parse(text); } catch { throw new Error('API unavailable (' + resp.status + ') — try again in a moment.'); }
-      if (!json.ok) throw new Error(json.error || 'Unknown error');
-      filteredRows = json.rows || [];
-      const passType = document.getElementById('passTypeFilter').value;
-      if (passType) filteredRows = filteredRows.filter(r => r.passType === passType);
-      filteredRows = dedup(filteredRows);
-      filteredRows.sort((a, b) => (a.unit || '').localeCompare(b.unit || '', undefined, { numeric: true }));
-      renderTable(filteredRows);
-      const countEl = document.getElementById('emailCount');
-      if (countEl) { countEl.textContent = filteredRows.length + ' guests'; countEl.style.display = ''; }
-      statusBar.innerHTML = `<span class="badge">${filteredRows.length}</span>&nbsp; guests found`;
-    } catch (err) {
-      statusBar.innerHTML = `<span class="err">Error: ${err.message}</span>`;
-    } finally {
-      fetchBtn.disabled = false;
-    }
-  });
-
-  function dedup(rows) {
-    const seen = new Map();
-    for (const row of rows) {
-      const key = (row.unit || '').trim().replace(/\s+/g, ' ').toLowerCase();
-      if (!seen.has(key)) {
-        seen.set(key, row);
-      } else if (row.status === 'active' && seen.get(key).status !== 'active') {
-        seen.set(key, row);
-      }
-    }
-    return [...seen.values()];
+  function applyFilter(){
+    const f = filterSent.value;
+    visibleGuests = f==="all" ? allGuests : allGuests.filter(g => g.email_sent===(f==="yes"?"yes":"no"));
+    renderTable(visibleGuests);
   }
 
-  function renderTable(rows) {
-    guestBody.innerHTML = '';
-    if (!rows.length) {
-      noData.style.display = 'block';
-      guestTable.style.display = 'none';
-      bulkBar.style.display = 'none';
-      return;
-    }
-    rows.forEach((r, i) => {
-      const hasEmail = !!r.email;
-      const name     = (r.firstName + ' ' + r.lastName).trim() || 'Guest';
-      const mailto   = hasEmail ? buildMailto([r], name) : '';
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td><input type="checkbox" class="row-check" data-idx="${i}" ${hasEmail ? '' : 'disabled title="No email"'} /></td>
-        <td class="left">${esc(r.firstName)}</td>
-        <td class="left">${esc(r.lastName)}</td>
-        <td class="left">${hasEmail ? esc(r.email) : '<span class="no-email">no email</span>'}</td>
-        <td>${esc(r.unit)}</td>
-        <td>${esc(r.startDate)}</td>
-        <td>${esc(r.endDate)}</td>
-        <td>${esc(r.passType)}</td>
-        <td>${esc(r.status)}</td>
-        <td>${hasEmail ? '<a class="email-link" href="' + mailto + '" target="_blank">Send</a>' : '<span class="no-email">—</span>'}</td>
+  filterSent.addEventListener("change", applyFilter);
+
+  // Load from DB
+  loadBtn.addEventListener("click", async()=>{
+    statusBar.innerHTML = "<span class=\"spinner\"></span>&nbsp; Loading guests…";
+    loadBtn.disabled = true;
+    guestTable.style.display="none"; noData.style.display="none"; bulkBar.style.display="none";
+    try {
+      const resp = await fetch("/api/guests");
+      const text = await resp.text();
+      let data; try { data=JSON.parse(text); } catch { throw new Error("API unavailable ("+resp.status+")"); }
+      if (!data.ok) throw new Error(data.error||"Unknown error");
+      allGuests = data.guests||[];
+      applyFilter();
+      if (emailCount){ emailCount.textContent=allGuests.length+" guests"; emailCount.style.display=""; }
+      statusBar.innerHTML = `<span class="badge">${allGuests.length}</span>&nbsp; total guests &nbsp;|&nbsp; <span class="badge badge-green">${allGuests.filter(g=>g.email_sent==="yes").length}</span>&nbsp; sent &nbsp;|&nbsp; <span class="badge" style="background:#c05621">${allGuests.filter(g=>g.email_sent!=="yes").length}</span>&nbsp; not sent`;
+    } catch(err){ statusBar.innerHTML=`<span class="err">Error: ${err.message}</span>`; }
+    finally{ loadBtn.disabled=false; }
+  });
+
+  // Sync from Symliv
+  syncBtn.addEventListener("click", async()=>{
+    statusBar.innerHTML = "<span class=\"spinner\"></span>&nbsp; Syncing from Symliv (this may take 10-20 seconds)…";
+    syncBtn.disabled=true;
+    try {
+      const resp = await fetch("/api/sync-guests",{method:"POST"});
+      const text = await resp.text();
+      let data; try { data=JSON.parse(text); } catch { throw new Error("API unavailable ("+resp.status+")"); }
+      if (!data.ok) throw new Error(data.error||"Sync failed");
+      statusBar.innerHTML = `&#10003; Sync complete — <strong>${data.inserted}</strong> new guests added, ${data.skipped} already existed (${data.total} qualified in Symliv). <em>Click Load Guests to refresh the table.</em>`;
+    } catch(err){ statusBar.innerHTML=`<span class="err">Sync error: ${err.message}</span>`; }
+    finally{ syncBtn.disabled=false; }
+  });
+
+  function renderTable(rows){
+    guestBody.innerHTML="";
+    if (!rows.length){ noData.style.display="block"; guestTable.style.display="none"; bulkBar.style.display="none"; return; }
+    rows.forEach((g,i)=>{
+      const hasEmail = !!g.email;
+      const tr = document.createElement("tr");
+      if (g.email_sent==="yes") tr.classList.add("sent-row");
+      tr.dataset.idx=i;
+      tr.innerHTML=`
+        <td><input type="checkbox" class="row-check" data-idx="${i}" ${hasEmail?"":"disabled"} /></td>
+        <td class="left">${esc(g.guest_name)}</td>
+        <td class="left">${esc(g.email)}</td>
+        <td>${esc(g.unit)}</td>
+        <td>${esc(g.arrival)}</td>
+        <td>${esc(g.departure)}</td>
+        <td id="sent-${g.id}">${sentBadge(g.email_sent)}</td>
+        <td>${hasEmail?`<span class="email-link" data-id="${g.id}" data-idx="${i}">Send</span>`:"—"}</td>
       `;
       guestBody.appendChild(tr);
     });
-    guestTable.style.display = '';
-    bulkBar.style.display = 'flex';
-    selectAll.checked = false;
-    updateSelectedCount();
-    document.querySelectorAll('.row-check').forEach(cb => {
-      cb.addEventListener('change', updateSelectedCount);
-    });
+    guestTable.style.display="";
+    bulkBar.style.display="flex";
+    selectAll.checked=false;
+    updateCount();
+    document.querySelectorAll(".row-check").forEach(cb=>cb.addEventListener("change",updateCount));
+    document.querySelectorAll(".email-link").forEach(el=>el.addEventListener("click", onSingleSend));
   }
 
-  function updateSelectedCount() {
-    const checked = document.querySelectorAll('.row-check:checked');
-    selectedCount.textContent = checked.length + ' selected';
-    openMailtoBtn.disabled = checked.length === 0;
+  function updateCount(){
+    const n = document.querySelectorAll(".row-check:checked").length;
+    selectedCount.textContent=n+" selected";
+    openMailtoBtn.disabled=n===0;
+    markSentBtn.disabled=n===0;
   }
 
-  selectAll.addEventListener('change', () => {
-    document.querySelectorAll('.row-check:not([disabled])').forEach(cb => {
-      cb.checked = selectAll.checked;
-    });
-    updateSelectedCount();
+  selectAll.addEventListener("change",()=>{
+    document.querySelectorAll(".row-check:not([disabled])").forEach(cb=>{ cb.checked=selectAll.checked; });
+    updateCount();
   });
 
-  function buildMailto(rows, nameHint) {
-    const to    = rows.map(r => r.email).filter(Boolean).join(';');
-    const subj  = encodeURIComponent("Shores of Panama \u2013 We'd Love Your Feedback!");
-    const body  = encodeURIComponent(DEFAULT_BODY.replace('{NAME}', nameHint || 'Guest'));
-    return 'mailto:' + to + '?subject=' + subj + '&body=' + body;
+  // Single send
+  async function onSingleSend(e){
+    const el = e.currentTarget;
+    const id  = parseInt(el.dataset.id);
+    const idx = parseInt(el.dataset.idx);
+    const g   = visibleGuests[idx];
+    if (!g?.email) return;
+    const subj = encodeURIComponent(DEFAULT_SUBJECT);
+    const body = encodeURIComponent(DEFAULT_BODY);
+    window.open("mailto:"+g.email+"?subject="+subj+"&body="+body,"_blank");
+    // Mark as sent
+    try {
+      await fetch("/api/guests",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,emailSent:"yes"})});
+      g.email_sent="yes";
+      const cell = document.getElementById("sent-"+id);
+      if (cell) cell.innerHTML=sentBadge("yes");
+      const row = el.closest("tr"); if (row) row.classList.add("sent-row");
+    } catch(err){ console.error("Mark sent failed",err); }
   }
 
-  openMailtoBtn.addEventListener('click', () => {
-    const checked  = [...document.querySelectorAll('.row-check:checked')];
-    const selected = checked.map(cb => filteredRows[parseInt(cb.dataset.idx)]);
-    const withEmail = selected.filter(r => r.email);
-    if (!withEmail.length) return;
-    modalRecipCount.textContent = '(' + withEmail.length + ' recipient' + (withEmail.length > 1 ? 's' : '') + ')';
-    emailBodyTA.value = DEFAULT_BODY.replace('{NAME}', 'Guest');
-    modalOverlay._selectedRows = withEmail;
-    modalOverlay.classList.add('open');
+  // Bulk BCC
+  openMailtoBtn.addEventListener("click",()=>{
+    const checked  = [...document.querySelectorAll(".row-check:checked")];
+    const selected = checked.map(cb=>visibleGuests[parseInt(cb.dataset.idx)]).filter(g=>g?.email);
+    if (!selected.length) return;
+    modalRecip.textContent="("+selected.length+" recipient"+(selected.length>1?"s":"")+")";
+    emailBodyTA.value=DEFAULT_BODY;
+    modalOverlay._sel=selected;
+    modalOverlay.classList.add("open");
   });
 
-  cancelModal.addEventListener('click', () => { modalOverlay.classList.remove('open'); });
-  modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) modalOverlay.classList.remove('open'); });
+  cancelModal.addEventListener("click",()=>modalOverlay.classList.remove("open"));
+  modalOverlay.addEventListener("click",e=>{ if(e.target===modalOverlay) modalOverlay.classList.remove("open"); });
 
-  openMailtoFinal.addEventListener('click', () => {
-    const rows = modalOverlay._selectedRows || [];
-    if (rows.length > 30) alert('Warning: More than 30 recipients. Your email client may truncate the mailto link.');
-    const bcc  = rows.map(r => r.email).join(';');
-    const subj = encodeURIComponent("Shores of Panama \u2013 We'd Love Your Feedback!");
+  sendFinal.addEventListener("click", async()=>{
+    const rows = modalOverlay._sel||[];
+    if (!rows.length) return;
+    const bcc  = rows.map(r=>r.email).join(";");
+    const subj = encodeURIComponent(DEFAULT_SUBJECT);
     const body = encodeURIComponent(emailBodyTA.value);
-    window.open('mailto:?bcc=' + bcc + '&subject=' + subj + '&body=' + body, '_blank');
-    modalOverlay.classList.remove('open');
+    window.open("mailto:?bcc="+bcc+"&subject="+subj+"&body="+body,"_blank");
+    modalOverlay.classList.remove("open");
+    // Mark all as sent
+    for (const g of rows){
+      try {
+        await fetch("/api/guests",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:g.id,emailSent:"yes"})});
+        g.email_sent="yes";
+        const cell=document.getElementById("sent-"+g.id); if(cell) cell.innerHTML=sentBadge("yes");
+        const row=guestTable.querySelector(`tr[data-idx="${visibleGuests.indexOf(g)}"]`);
+        if(row) row.classList.add("sent-row");
+      } catch(err){ console.error(err); }
+    }
+    updateCount();
   });
 
-  exportCsvBtn.addEventListener('click', () => {
-    if (!filteredRows.length) return;
-    const headers = ['firstName','lastName','email','unit','startDate','endDate','passType','status','paid','registrationId','credentialNumber'];
-    const lines   = [headers.join(',')];
-    filteredRows.forEach(r => {
-      lines.push(headers.map(h => '"' + String(r[h] ?? '').replace(/"/g, '""') + '"').join(','));
-    });
-    const blob = new Blob([lines.join('\r\n')], { type: 'text/csv' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'symliv-guests-' + new Date().toISOString().slice(0,10) + '.csv';
+  // Mark selected as sent without emailing
+  markSentBtn.addEventListener("click", async()=>{
+    const checked  = [...document.querySelectorAll(".row-check:checked")];
+    const selected = checked.map(cb=>visibleGuests[parseInt(cb.dataset.idx)]).filter(Boolean);
+    for (const g of selected){
+      try {
+        await fetch("/api/guests",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:g.id,emailSent:"yes"})});
+        g.email_sent="yes";
+        const cell=document.getElementById("sent-"+g.id); if(cell) cell.innerHTML=sentBadge("yes");
+        const row=guestTable.querySelector(`tr[data-idx="${visibleGuests.indexOf(g)}"]`);
+        if(row) row.classList.add("sent-row");
+      } catch(err){ console.error(err); }
+    }
+    updateCount();
+  });
+
+  // CSV export
+  exportCsvBtn.addEventListener("click",()=>{
+    if (!visibleGuests.length) return;
+    const hdr=["id","guest_name","email","unit","arrival","departure","email_sent"];
+    const lines=[hdr.join(",")];
+    visibleGuests.forEach(g=>lines.push(hdr.map(h=>`"${String(g[h]??"").replace(/"/g,'""')}"`).join(",")));
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(new Blob([lines.join("\r\n")],{type:"text/csv"}));
+    a.download="shores-guests-"+new Date().toISOString().slice(0,10)+".csv";
     a.click();
   });
-
-  function esc(str) {
-    return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
 })();
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-

@@ -1,0 +1,418 @@
+---
+export const prerender = false;
+
+const ADMIN_PASSWORD = 'Shores9900!';
+const AUTH_COOKIE   = 'admin_auth';
+const AUTH_TOKEN    = 'shores-admin-ok';
+
+if (Astro.url.searchParams.get('logout') === '1') {
+  Astro.cookies.delete(AUTH_COOKIE, { path: '/' });
+  return Astro.redirect('/admin');
+}
+
+let loginError = false;
+if (Astro.request.method === 'POST') {
+  const fd  = await Astro.request.formData();
+  const pwd = (fd.get('password') as string) ?? '';
+  if (pwd === ADMIN_PASSWORD) {
+    Astro.cookies.set(AUTH_COOKIE, AUTH_TOKEN, {
+      httpOnly: true, sameSite: 'strict', path: '/', maxAge: 28800,
+    });
+    return Astro.redirect('/admin');
+  }
+  loginError = true;
+}
+
+const authed = Astro.cookies.get(AUTH_COOKIE)?.value === AUTH_TOKEN;
+
+let rows: any[] = [];
+let dbErr = '';
+if (authed) {
+  try {
+    const db = (Astro.locals as any).runtime?.env?.DB;
+    if (!db) { dbErr = 'DB binding not found.'; }
+    else {
+      const r = await db.prepare('SELECT * FROM survey_responses ORDER BY submitted_at DESC').all();
+      rows = r.results ?? [];
+    }
+  } catch (e: any) { dbErr = String(e?.message ?? e); }
+}
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin – Shores of Panama Survey</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f4f8;min-height:100vh}
+
+    /* ── Login ── */
+    .login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh}
+    .login-card{background:#fff;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,.12);padding:3rem 2.5rem;width:100%;max-width:380px;text-align:center}
+    .login-logo{font-size:1.5rem;font-weight:800;color:#0a2744;letter-spacing:2px;margin-bottom:.4rem}
+    .login-sub{font-size:.9rem;color:#718096;margin-bottom:2rem}
+    .login-card label{display:block;text-align:left;font-size:.82rem;font-weight:600;color:#4a5568;margin-bottom:.35rem}
+    .login-card input[type=password]{width:100%;padding:.65rem .9rem;border:1.5px solid #cbd5e0;border-radius:8px;font-size:1rem;outline:none;transition:border .2s}
+    .login-card input[type=password]:focus{border-color:#0a2744}
+    .login-btn{margin-top:1.25rem;width:100%;padding:.75rem;background:#0a2744;color:#fff;border:none;border-radius:8px;font-size:1rem;font-weight:700;cursor:pointer;letter-spacing:.5px;transition:background .2s}
+    .login-btn:hover{background:#163d6b}
+    .login-error{margin-top:.8rem;color:#e53e3e;font-size:.87rem}
+
+    /* ── Header ── */
+    .header{background:#0a2744;color:#fff;padding:.9rem 1.5rem;display:flex;align-items:center;justify-content:space-between}
+    .header h1{font-size:1.25rem;font-weight:800;letter-spacing:1px}
+    .header-right{display:flex;align-items:center;gap:1rem}
+    .count-badge{background:rgba(255,255,255,.15);padding:.25rem .75rem;border-radius:20px;font-size:.82rem}
+    .logout-btn{background:transparent;border:1.5px solid rgba(255,255,255,.5);color:#fff;padding:.35rem .9rem;border-radius:6px;font-size:.82rem;cursor:pointer;transition:all .2s}
+    .logout-btn:hover{background:rgba(255,255,255,.15)}
+
+    /* ── Filter bar ── */
+    .filter-bar{background:#fff;border-bottom:1px solid #e2e8f0;padding:.9rem 1.5rem;display:flex;flex-wrap:wrap;gap:.75rem;align-items:center}
+    .filter-bar label{font-size:.78rem;font-weight:600;color:#4a5568;white-space:nowrap}
+    .filter-bar input[type=date],.filter-bar select{padding:.38rem .65rem;border:1.5px solid #cbd5e0;border-radius:6px;font-size:.82rem;outline:none;background:#fff;color:#2d3748}
+    .filter-bar input[type=date]:focus,.filter-bar select:focus{border-color:#0a2744}
+    .filter-group{display:flex;align-items:center;gap:.4rem}
+    .apply-btn{background:#0a2744;color:#fff;border:none;padding:.42rem 1rem;border-radius:6px;font-size:.82rem;font-weight:600;cursor:pointer;transition:background .2s}
+    .apply-btn:hover{background:#163d6b}
+    .csv-btn{background:#c9a84c;color:#fff;border:none;padding:.42rem 1rem;border-radius:6px;font-size:.82rem;font-weight:600;cursor:pointer;transition:background .2s}
+    .csv-btn:hover{background:#b8963e}
+    .sep{width:1px;height:28px;background:#e2e8f0;margin:0 .25rem}
+
+    /* ── Section checkboxes ── */
+    .section-bar{background:#f8fafc;border-bottom:1px solid #e2e8f0;padding:.65rem 1.5rem;display:flex;flex-wrap:wrap;gap:.5rem 1.25rem;align-items:center}
+    .section-bar span{font-size:.78rem;font-weight:700;color:#4a5568;margin-right:.5rem;text-transform:uppercase;letter-spacing:.5px}
+    .section-bar label{display:flex;align-items:center;gap:.35rem;font-size:.82rem;color:#2d3748;cursor:pointer;white-space:nowrap}
+    .section-bar input[type=checkbox]{accent-color:#0a2744;width:15px;height:15px;cursor:pointer}
+
+    /* ── Table ── */
+    .table-wrap{overflow-x:auto;max-height:calc(100vh - 230px)}
+    table{width:100%;border-collapse:collapse;font-size:.82rem}
+    thead th{position:sticky;top:0;background:#0a2744;color:#fff;padding:.6rem .75rem;text-align:left;white-space:nowrap;cursor:pointer;user-select:none;z-index:2}
+    thead th:hover{background:#163d6b}
+    thead th.sort-asc::after{content:' ▲';font-size:.65rem}
+    thead th.sort-desc::after{content:' ▼';font-size:.65rem}
+    tbody tr:nth-child(even){background:#f8fafc}
+    tbody tr:hover{background:#ebf4ff}
+    tbody td{padding:.52rem .75rem;border-bottom:1px solid #e2e8f0;white-space:nowrap;color:#2d3748}
+    .avg-row td{background:#e8f0fe;font-weight:700;color:#0a2744;border-top:2px solid #0a2744;position:sticky;bottom:0}
+    .num-col{text-align:center}
+    .no-data{padding:3rem;text-align:center;color:#718096;font-size:.95rem}
+    .section-hdr th{background:#4a6fa5 !important;font-size:.72rem;text-transform:uppercase;letter-spacing:.5px}
+    td.empty{color:#a0aec0}
+
+    /* ── DB error ── */
+    .db-error{background:#fff5f5;border:1px solid #fc8181;color:#c53030;padding:1rem 1.5rem;margin:1rem;border-radius:8px;font-size:.9rem}
+  </style>
+</head>
+<body>
+
+{!authed && (
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="login-logo">SHORES OF PANAMA</div>
+      <div class="login-sub">Survey Admin Portal</div>
+      <form method="POST">
+        <label for="pwd">Password</label>
+        <input type="password" id="pwd" name="password" autofocus autocomplete="current-password" />
+        <button class="login-btn" type="submit">Sign In</button>
+        {loginError && <div class="login-error">Incorrect password. Please try again.</div>}
+      </form>
+    </div>
+  </div>
+)}
+
+{authed && (
+  <div id="app">
+    <div class="header">
+      <h1>Survey Responses</h1>
+      <div class="header-right">
+        <span class="count-badge" id="count-badge">Loading...</span>
+        <a href="/admin?logout=1"><button class="logout-btn">Logout</button></a>
+      </div>
+    </div>
+
+    {dbErr && <div class="db-error">Database error: {dbErr}</div>}
+
+    <div class="filter-bar">
+      <div class="filter-group">
+        <label>From</label>
+        <input type="date" id="f-from" />
+      </div>
+      <div class="filter-group">
+        <label>To</label>
+        <input type="date" id="f-to" />
+      </div>
+      <div class="sep"></div>
+      <div class="filter-group">
+        <label>Sort</label>
+        <select id="f-sort">
+          <option value="submitted_at">Submitted Date</option>
+          <option value="arrival_date">Arrival Date</option>
+          <option value="departure_date">Departure Date</option>
+          <option value="unit_number">Unit Number</option>
+          <option value="q5_overall">Overall Rating</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Direction</label>
+        <select id="f-dir">
+          <option value="desc">Newest First</option>
+          <option value="asc">Oldest First</option>
+        </select>
+      </div>
+      <div class="sep"></div>
+      <button class="apply-btn" onclick="applyFilters()">Apply Filters</button>
+      <button class="csv-btn" onclick="downloadCSV()">&#8681; Download CSV</button>
+    </div>
+
+    <div class="section-bar">
+      <span>Sections:</span>
+      <label><input type="checkbox" id="s-checkin"     onchange="updateSections()" /> Check-in Ratings</label>
+      <label><input type="checkbox" id="s-staff"       onchange="updateSections()" /> Staff Ratings</label>
+      <label><input type="checkbox" id="s-clean"       onchange="updateSections()" /> Cleanliness Ratings</label>
+      <label><input type="checkbox" id="s-overall"     onchange="updateSections()" /> Overall Condition</label>
+      <label><input type="checkbox" id="s-recommend"   onchange="updateSections()" /> Recommend</label>
+      <label><input type="checkbox" id="s-all"         onchange="toggleAll(this)"  /> All Questions</label>
+    </div>
+
+    <div class="table-wrap">
+      <table id="data-table">
+        <thead id="thead"></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+)}
+
+<script define:vars={{ allRows: rows }}>
+// ── Column definitions ────────────────────────────────────────────────────────
+const SECTIONS = {
+  checkin: {
+    label: 'Check-in Ratings',
+    cols: [
+      { key: 'q2_registration', label: 'Registration' },
+      { key: 'q2_packet',       label: 'Info Packet'  },
+      { key: 'q2_concierge',   label: 'Concierge'    },
+      { key: 'q2_patrol',      label: 'Security'     },
+    ]
+  },
+  staff: {
+    label: 'Staff Ratings',
+    cols: [
+      { key: 'q3_concierge',   label: 'Concierge'    },
+      { key: 'q3_patrol',      label: 'Patrol'       },
+      { key: 'q3_cac',         label: 'CAC'          },
+      { key: 'q3_maintenance', label: 'Maintenance'  },
+    ]
+  },
+  clean: {
+    label: 'Cleanliness Ratings',
+    cols: [
+      { key: 'q4_indoorpoolarea',  label: 'Indoor Pool Area'   },
+      { key: 'q4_indoorpool',      label: 'Indoor Pool'        },
+      { key: 'q4_indoorhottub',    label: 'Indoor Hot Tub'     },
+      { key: 'q4_outdoorpoolarea', label: 'Outdoor Pool Area'  },
+      { key: 'q4_outdoorpool',     label: 'Outdoor Pool'       },
+      { key: 'q4_outdoorhottub',   label: 'Outdoor Hot Tub'    },
+      { key: 'q4_lobby',           label: 'Lobby'              },
+      { key: 'q4_elevators',       label: 'Elevators'          },
+      { key: 'q4_restrooms',       label: 'Restrooms'          },
+      { key: 'q4_garage',          label: 'Garage'             },
+      { key: 'q4_stairs',          label: 'Stairs'             },
+    ]
+  },
+  overall: {
+    label: 'Overall Condition',
+    cols: [
+      { key: 'q5_overall', label: 'Overall Rating' },
+    ]
+  },
+  recommend: {
+    label: 'Recommend',
+    cols: [
+      { key: 'q6_recommend', label: 'Recommend?' },
+      { key: 'q6_comments',  label: 'Comments'   },
+    ]
+  },
+};
+
+const BASE_COLS = [
+  { key: 'submitted_at',   label: 'Submitted' },
+  { key: 'arrival_date',   label: 'Arrival'   },
+  { key: 'departure_date', label: 'Departure' },
+  { key: 'unit_number',    label: 'Unit'      },
+  { key: 'q1_purpose',     label: 'Purpose'   },
+];
+
+let currentData = Array.isArray(allRows) ? allRows : [];
+let sortCol = 'submitted_at';
+let sortDir = 'desc';
+
+// ── Active sections ───────────────────────────────────────────────────────────
+function getActiveSections() {
+  return Object.keys(SECTIONS).filter(s => {
+    const el = document.getElementById('s-' + s);
+    return el && el.checked;
+  });
+}
+
+function getVisibleCols() {
+  const active = getActiveSections();
+  let cols = [...BASE_COLS];
+  active.forEach(s => { cols = cols.concat(SECTIONS[s].cols); });
+  return cols;
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function fmt(val) {
+  if (val === null || val === undefined || val === '') return '';
+  if (typeof val === 'string' && val.includes('T')) return val.split('T')[0];
+  return String(val);
+}
+
+function renderTable(data) {
+  const cols = getVisibleCols();
+  const thead = document.getElementById('thead');
+  const tbody = document.getElementById('tbody');
+
+  // Build header
+  let hRows = '';
+  // Section group headers
+  const active = getActiveSections();
+  if (active.length > 0) {
+    let groupCells = `<th colspan="${BASE_COLS.length}" style="background:#0a2744"></th>`;
+    active.forEach(s => {
+      const sec = SECTIONS[s];
+      groupCells += `<th colspan="${sec.cols.length}" style="background:#4a6fa5;text-align:center;font-size:.75rem;text-transform:uppercase;letter-spacing:.5px;border-left:2px solid #fff">${sec.label}</th>`;
+    });
+    hRows = `<tr>${groupCells}</tr>`;
+  }
+
+  const thCells = cols.map(c => {
+    const cls = c.key === sortCol ? `sort-${sortDir}` : '';
+    return `<th class="${cls}" onclick="sortBy('${c.key}')">${c.label}</th>`;
+  }).join('');
+  thead.innerHTML = hRows + `<tr>${thCells}</tr>`;
+
+  // Build body
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="${cols.length}" class="no-data">No responses match the current filters.</td></tr>`;
+    document.getElementById('count-badge').textContent = '0 responses';
+    return;
+  }
+
+  const numKeys = new Set();
+  Object.keys(SECTIONS).forEach(s => {
+    SECTIONS[s].cols.forEach(c => { if (!['q6_recommend','q6_comments'].includes(c.key)) numKeys.add(c.key); });
+  });
+
+  const rows = data.map(row => {
+    const cells = cols.map(c => {
+      const v = row[c.key];
+      const cls = numKeys.has(c.key) ? ' class="num-col"' : '';
+      const display = (v === null || v === undefined || v === '') ? '<span class="empty">—</span>' : fmt(v);
+      return `<td${cls}>${display}</td>`;
+    }).join('');
+    return `<tr>${cells}</tr>`;
+  }).join('');
+
+  // Averages row
+  const avgCells = cols.map(c => {
+    if (numKeys.has(c.key)) {
+      const vals = data.map(r => parseFloat(r[c.key])).filter(n => !isNaN(n));
+      if (vals.length) {
+        const avg = (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1);
+        return `<td class="num-col">${avg}</td>`;
+      }
+      return `<td class="num-col">—</td>`;
+    }
+    return `<td>${c.key === 'submitted_at' ? 'Averages' : ''}</td>`;
+  }).join('');
+
+  tbody.innerHTML = rows + `<tr class="avg-row">${avgCells}</tr>`;
+  document.getElementById('count-badge').textContent = `${data.length} response${data.length !== 1 ? 's' : ''}`;
+}
+
+// ── Sort ──────────────────────────────────────────────────────────────────────
+function sortBy(col) {
+  if (sortCol === col) {
+    sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    sortCol = col;
+    sortDir = 'desc';
+  }
+  document.getElementById('f-sort').value = sortCol;
+  document.getElementById('f-dir').value  = sortDir;
+  applyFilters();
+}
+
+// ── Filter ────────────────────────────────────────────────────────────────────
+function applyFilters() {
+  sortCol = document.getElementById('f-sort').value;
+  sortDir = document.getElementById('f-dir').value;
+
+  const from = document.getElementById('f-from').value;
+  const to   = document.getElementById('f-to').value;
+
+  let data = [...currentData];
+
+  if (from) data = data.filter(r => (r.submitted_at || '').slice(0,10) >= from);
+  if (to)   data = data.filter(r => (r.submitted_at || '').slice(0,10) <= to);
+
+  data.sort((a, b) => {
+    const av = a[sortCol] ?? '';
+    const bv = b[sortCol] ?? '';
+    const numA = parseFloat(av), numB = parseFloat(bv);
+    let cmp;
+    if (!isNaN(numA) && !isNaN(numB)) { cmp = numA - numB; }
+    else { cmp = String(av).localeCompare(String(bv)); }
+    return sortDir === 'asc' ? cmp : -cmp;
+  });
+
+  renderTable(data);
+}
+
+// ── Section toggles ───────────────────────────────────────────────────────────
+function updateSections() {
+  const allCb = document.getElementById('s-all');
+  const sectionCbs = ['checkin','staff','clean','overall','recommend'];
+  const anyUnchecked = sectionCbs.some(s => !document.getElementById('s-'+s).checked);
+  allCb.checked = !anyUnchecked;
+  applyFilters();
+}
+
+function toggleAll(cb) {
+  ['checkin','staff','clean','overall','recommend'].forEach(s => {
+    document.getElementById('s-'+s).checked = cb.checked;
+  });
+  applyFilters();
+}
+
+// ── CSV export ────────────────────────────────────────────────────────────────
+function downloadCSV() {
+  const cols = getVisibleCols();
+  const from = document.getElementById('f-from').value;
+  const to   = document.getElementById('f-to').value;
+  let data   = [...currentData];
+  if (from) data = data.filter(r => (r.submitted_at || '').slice(0,10) >= from);
+  if (to)   data = data.filter(r => (r.submitted_at || '').slice(0,10) <= to);
+
+  const esc = v => { const s = fmt(v); return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g,'""')}"` : s; };
+  const header = cols.map(c => c.label).join(',');
+  const rowsStr = data.map(r => cols.map(c => esc(r[c.key])).join(',')).join('\n');
+  const blob = new Blob([header + '\n' + rowsStr], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `shores-survey-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+if (document.getElementById('data-table')) {
+  applyFilters();
+}
+</script>
+</body>
+</html>
