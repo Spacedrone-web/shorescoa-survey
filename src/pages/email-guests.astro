@@ -326,7 +326,7 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
     if (!emails.length) return;
     /* build mailto with all addresses in BCC */
     const bcc     = emails.join(',');
-    const subject = encodeURIComponent('Your Experience at Shores of Panama');
+    const subject = encodeURIComponent('Your Experience at Shores of Panama, noreply');
     const body    = encodeURIComponent(
       'Dear Guest,\r\n\r\n' +
       'Thank you for staying at Shores of Panama!\r\n' +

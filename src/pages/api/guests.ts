@@ -13,7 +13,7 @@ export async function GET({cookies,locals}:APIContext){
       ORDER BY CAST(SUBSTR(unit,1,CASE WHEN INSTR(unit," ")>0 THEN INSTR(unit," ")-1 ELSE LENGTH(unit) END) AS INTEGER) ASC,
                arrival ASC
     `).all();
-    return j({ok:true,guests:results});
+    const _meta = await DB.prepare('SELECT value FROM meta WHERE key=?').bind('last_synced').first(); return j({ok:true, lastSynced:(_meta as any)?.value??null, guests:results});
   } catch(e:any){ return j({ok:false,error:String(e?.message??e)},500); }
 }
 
@@ -27,6 +27,7 @@ export async function PATCH({request,cookies,locals}:APIContext){
     return j({ok:true});
   } catch(e:any){ return j({ok:false,error:String(e?.message??e)},500); }
 }
+
 
 
 
