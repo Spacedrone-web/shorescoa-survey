@@ -1,4 +1,4 @@
-﻿---
+---
 export const prerender = false;
 const authed = Astro.cookies.get("admin_auth")?.value === "shores-admin-ok";
 if (!authed) return Astro.redirect("/admin");
@@ -6,332 +6,278 @@ if (!authed) return Astro.redirect("/admin");
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Guest Email Tool – Shores of Panama</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f4f8;min-height:100vh}
-    .header{background:#0a2744;color:#fff;padding:.9rem 1.5rem;display:flex;align-items:center;justify-content:space-between}
-    .header h1{font-size:1.25rem;font-weight:800;letter-spacing:1px}
-    .header-right{display:flex;align-items:center;gap:.75rem}
-    .btn-sm{padding:.35rem .9rem;border-radius:6px;font-size:.82rem;font-weight:700;cursor:pointer;border:none;letter-spacing:.4px;text-decoration:none;display:inline-block}
-    .btn-secondary{background:rgba(255,255,255,.15);color:#fff}
-    .btn-secondary:hover{background:rgba(255,255,255,.28)}
-    .controls{background:#fff;border-bottom:1px solid #e2e8f0;padding:1rem 1.5rem;display:flex;flex-wrap:wrap;gap:.9rem;align-items:flex-end}
-    .ctrl-group{display:flex;flex-direction:column;gap:.25rem}
-    .ctrl-group label{font-size:.75rem;font-weight:700;color:#4a5568;text-transform:uppercase;letter-spacing:.5px}
-    .ctrl-group select{padding:.45rem .7rem;border:1.5px solid #cbd5e0;border-radius:7px;font-size:.9rem;color:#2d3748;outline:none}
-    .btn-primary{padding:.5rem 1.4rem;background:#0a2744;color:#fff;border:none;border-radius:7px;font-size:.9rem;font-weight:700;cursor:pointer;align-self:flex-end}
-    .btn-primary:hover{background:#163d6b}
-    .btn-primary:disabled{opacity:.5;cursor:not-allowed}
-    .btn-sync{padding:.5rem 1.2rem;background:#276749;color:#fff;border:none;border-radius:7px;font-size:.9rem;font-weight:700;cursor:pointer;align-self:flex-end}
-    .btn-sync:hover{background:#22543d}
-    .btn-sync:disabled{opacity:.5;cursor:not-allowed}
-    .btn-test{padding:.5rem 1.2rem;background:#553c9a;color:#fff;border:none;border-radius:7px;font-size:.9rem;font-weight:700;cursor:pointer;align-self:flex-end}
-    .btn-test:hover{background:#44337a}
-    .status-bar{padding:.55rem 1.5rem;font-size:.84rem;color:#4a5568;background:#edf2f7;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;min-height:2.2rem}
-    .spinner{width:14px;height:14px;border:2px solid #0a2744;border-top-color:transparent;border-radius:50%;display:inline-block;animation:spin .7s linear infinite}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .badge{border-radius:12px;padding:.1rem .65rem;font-size:.78rem;font-weight:700;color:#fff}
-    .bg-navy{background:#0a2744}.bg-green{background:#276749}.bg-orange{background:#c05621}
-    .err{color:#c53030}
-    .filter-note{padding:.45rem 1.5rem;font-size:.78rem;color:#744210;background:#fefcbf;border-bottom:1px solid #f6e05e}
-    .bulk-bar{padding:.65rem 1.5rem;background:#fff;border-bottom:1px solid #e2e8f0;display:flex;flex-wrap:wrap;gap:.75rem;align-items:center}
-    .bulk-bar label{font-size:.84rem;color:#4a5568;display:flex;align-items:center;gap:.4rem;cursor:pointer}
-    .btn-green{padding:.45rem 1.1rem;background:#276749;color:#fff;border:none;border-radius:7px;font-size:.84rem;font-weight:700;cursor:pointer}
-    .btn-green:hover{background:#22543d}.btn-green:disabled{opacity:.5;cursor:not-allowed}
-    .btn-orange{padding:.45rem 1.1rem;background:#c05621;color:#fff;border:none;border-radius:7px;font-size:.84rem;font-weight:700;cursor:pointer}
-    .btn-orange:hover{background:#9c4221}.btn-orange:disabled{opacity:.5;cursor:not-allowed}
-    .btn-csv{padding:.45rem 1.1rem;background:#553c9a;color:#fff;border:none;border-radius:7px;font-size:.84rem;font-weight:700;cursor:pointer}
-    .btn-csv:hover{background:#44337a}
-    .table-wrap{overflow-x:auto;padding:1rem 1.5rem}
-    table{width:100%;border-collapse:collapse;font-size:.84rem;background:#fff;border-radius:10px;box-shadow:0 1px 8px rgba(0,0,0,.07);overflow:hidden}
-    thead th{background:#0a2744;color:#fff;padding:.6rem .75rem;text-align:center;white-space:nowrap;font-size:.78rem;letter-spacing:.4px;position:sticky;top:0;z-index:2}
-    tbody tr:nth-child(even){background:#f7fafc}
-    tbody tr:hover{background:#ebf4ff}
-    tbody tr.sent-row{opacity:.65}
-    tbody td{padding:.5rem .75rem;border-bottom:1px solid #e2e8f0;text-align:center;vertical-align:middle}
-    tbody td.left{text-align:left}
-    .no-data{padding:3rem;text-align:center;color:#718096;font-size:.95rem}
-    .send-btn{padding:.25rem .75rem;background:#2b6cb0;color:#fff;border:none;border-radius:5px;font-size:.78rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:background .15s}
-    .send-btn:hover{background:#2c5282}
-    .send-btn.sending{background:#718096;pointer-events:none}
-    .send-btn.done{background:#276749;pointer-events:none}
-    .send-btn.failed{background:#c53030}
-    .sent-badge{padding:.2rem .55rem;border-radius:10px;font-size:.73rem;font-weight:700;background:#c6f6d5;color:#22543d}
-    .unsent-badge{padding:.2rem .55rem;border-radius:10px;font-size:.73rem;font-weight:700;background:#fed7d7;color:#742a2a}
-    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:100}
-    .modal-overlay.open{display:flex}
-    .modal{background:#fff;border-radius:14px;box-shadow:0 8px 40px rgba(0,0,0,.2);padding:2rem;max-width:620px;width:calc(100% - 2rem)}
-    .modal h2{font-size:1.1rem;font-weight:800;color:#0a2744;margin-bottom:1rem}
-    .modal textarea{width:100%;height:160px;border:1.5px solid #cbd5e0;border-radius:8px;padding:.65rem .9rem;font-size:.88rem;resize:vertical;outline:none;font-family:inherit}
-    .modal input[type=email]{width:100%;padding:.55rem .9rem;border:1.5px solid #cbd5e0;border-radius:8px;font-size:.95rem;outline:none;font-family:inherit}
-    .modal input:focus,.modal textarea:focus{border-color:#0a2744}
-    .modal-actions{display:flex;gap:.75rem;justify-content:flex-end;margin-top:1rem}
-    .btn-cancel{padding:.5rem 1.1rem;background:#e2e8f0;color:#4a5568;border:none;border-radius:7px;font-size:.88rem;font-weight:700;cursor:pointer}
-    .btn-send{padding:.5rem 1.3rem;background:#0a2744;color:#fff;border:none;border-radius:7px;font-size:.88rem;font-weight:700;cursor:pointer}
-    .btn-send:hover{background:#163d6b}
-    .btn-send:disabled{opacity:.5;cursor:not-allowed}
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Guest Email Tool · Shores of Panama</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#f0f4f8;color:#1a1a2e;min-height:100vh}
+nav{background:#0d2461;color:#fff;padding:0 1.25rem;display:flex;align-items:center;justify-content:space-between;height:52px;position:sticky;top:0;z-index:100}
+nav .brand{font-size:1rem;font-weight:700;letter-spacing:.03em}
+nav .nav-right{display:flex;align-items:center;gap:.5rem}
+.badge-pill{background:#2563eb;color:#fff;border-radius:999px;padding:.2rem .75rem;font-size:.8rem;font-weight:600;white-space:nowrap}
+.badge-pill.sent-pill{background:#16a34a}
+.badge-pill.unsent-pill{background:#dc2626}
+.nav-btn{background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:6px;padding:.35rem .8rem;font-size:.82rem;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
+.nav-btn:hover{background:rgba(255,255,255,.28)}
+main{max-width:1200px;margin:1.5rem auto;padding:0 1rem}
+.controls{background:#fff;border-radius:10px;padding:1rem 1.25rem;display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:1rem}
+.controls select{padding:.4rem .7rem;border:1px solid #cbd5e1;border-radius:6px;font-size:.85rem;background:#f8fafc}
+.btn{padding:.4rem .95rem;border:none;border-radius:6px;font-size:.85rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:.35rem}
+.btn-primary{background:#2563eb;color:#fff}.btn-primary:hover{background:#1d4ed8}
+.btn-warning{background:#d97706;color:#fff}.btn-warning:hover{background:#b45309}
+.btn-secondary{background:#64748b;color:#fff}.btn-secondary:hover{background:#475569}
+.btn-info{background:#0891b2;color:#fff}.btn-info:hover{background:#0e7490}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.status-bar{background:#fff;border-radius:8px;padding:.6rem 1rem;font-size:.88rem;margin-bottom:.75rem;min-height:2.2rem;box-shadow:0 1px 3px rgba(0,0,0,.06);display:flex;align-items:center;gap:.5rem}
+.filter-note{background:#fef9c3;border:1px solid #fde047;border-radius:8px;padding:.55rem 1rem;font-size:.83rem;color:#713f12;margin-bottom:.75rem;display:none}
+.err{color:#dc2626;font-weight:600}
+.bulk-bar{background:#1e3a8a;color:#fff;border-radius:8px;padding:.55rem 1rem;display:none;flex-wrap:wrap;align-items:center;gap:.5rem;margin-bottom:.75rem}
+.bulk-bar span{font-size:.83rem;flex:1}
+.table-wrap{background:#fff;border-radius:10px;overflow:auto;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+table{width:100%;border-collapse:collapse;font-size:.84rem}
+thead th{background:#1e3a8a;color:#fff;padding:.6rem .75rem;text-align:left;font-weight:600;white-space:nowrap;position:sticky;top:0}
+tbody tr:nth-child(even){background:#f8fafc}
+tbody tr:hover{background:#eff6ff}
+td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
+.badge-sent{background:#dcfce7;color:#166534;border-radius:999px;padding:.1rem .6rem;font-size:.75rem;font-weight:700}
+.badge-unsent{background:#fee2e2;color:#991b1b;border-radius:999px;padding:.1rem .6rem;font-size:.75rem;font-weight:700}
+.send-btn{background:#2563eb;color:#fff;border:none;border-radius:5px;padding:.3rem .7rem;font-size:.78rem;font-weight:600;cursor:pointer}
+.send-btn:hover{background:#1d4ed8}
+.send-btn:disabled{opacity:.45;cursor:not-allowed}
+.no-email{color:#94a3b8;font-style:italic;font-size:.8rem}
+#noData{display:none;text-align:center;padding:2rem;color:#64748b;font-size:.95rem}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid #cbd5e1;border-top-color:#2563eb;border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal-box{background:#fff;border-radius:12px;padding:1.5rem 1.75rem;width:min(520px,95vw);box-shadow:0 8px 32px rgba(0,0,0,.25)}
+.modal-box h3{font-size:1.05rem;margin-bottom:1rem;color:#1e3a8a}
+.modal-box input[type="email"]{width:100%;padding:.5rem .75rem;border:1px solid #cbd5e1;border-radius:6px;font-size:.9rem;margin-bottom:.75rem}
+.modal-footer{display:flex;justify-content:flex-end;gap:.5rem;margin-top:1rem}
+</style>
 </head>
 <body>
 
-<div class="header">
-  <h1>SHORES OF PANAMA &nbsp;&middot;&nbsp; Guest Email Tool</h1>
-  <div class="header-right">
-    <span id="emailCount" class="btn-sm btn-secondary" style="pointer-events:none;display:none"></span>
-    <a href="/admin" class="btn-sm btn-secondary">&#8592; Survey Admin</a>
-    <a href="/admin?logout=1" class="btn-sm btn-secondary">Logout</a>
+<nav>
+  <span class="brand">SHORES OF PANAMA &middot; Guest Email Tool</span>
+  <div class="nav-right">
+    <span class="badge-pill sent-pill"   id="navSent">— Sent</span>
+    <span class="badge-pill unsent-pill" id="navUnsent">— Unsent</span>
+    <a href="/admin" class="nav-btn">&#8592; Survey Admin</a>
+    <a href="/admin?logout=1" class="nav-btn">Logout</a>
   </div>
-</div>
+</nav>
 
-<div class="controls">
-  <div class="ctrl-group">
-    <label>Show</label>
-    <select id="filterSent">
-      <option value="all">All Eligible Guests</option>
-      <option value="no">Not Sent</option>
-      <option value="yes">Sent</option>
+<main>
+  <div class="controls">
+    <button id="loadBtn" class="btn btn-primary">&#128100; Load Guests</button>
+    <button id="syncBtn" class="btn btn-warning">&#8635; Sync Symliv</button>
+    <button id="testBtn" class="btn btn-info">&#9993; Send Test Email</button>
+    <select id="filterSel">
+      <option value="unsent" selected>Not Sent</option>
+      <option value="all">All Guests</option>
+      <option value="sent">Sent</option>
     </select>
   </div>
-  <button class="btn-primary" id="loadBtn">Load Guests</button>
-  <button class="btn-sync"    id="syncBtn">&#8635; Sync Symliv</button>
-  <button class="btn-test"    id="testBtn">&#9993; Send Test Email</button>
-</div>
 
-<div class="filter-note" id="filterNote" style="display:none"></div>
-<div class="status-bar"  id="statusBar">Click Load Guests to view stored guests, or Sync Symliv to pull new registrations.</div>
+  <div class="status-bar"  id="statusBar">Click <strong>Load Guests</strong> to begin, or <strong>Sync Symliv</strong> to pull new registrations.</div>
+  <div class="filter-note" id="filterNote"></div>
 
-<div class="bulk-bar" id="bulkBar" style="display:none">
-  <label><input type="checkbox" id="selectAll" /> Select All</label>
-  <span id="selectedCount">0 selected</span>
-  <button class="btn-green"  id="openMailtoBtn" disabled>Open BCC Mailto</button>
-  <button class="btn-orange" id="markSentBtn"   disabled>&#10003; Mark as Sent</button>
-  <button class="btn-csv"    id="exportCsvBtn">Download CSV</button>
-</div>
-
-<div class="table-wrap">
-  <table id="guestTable" style="display:none">
-    <thead><tr>
-      <th></th><th>Guest Name</th><th>Email</th><th>Unit / Address</th>
-      <th>Arrival</th><th>Departure</th><th>Email Sent</th><th>Action</th>
-    </tr></thead>
-    <tbody id="guestBody"></tbody>
-  </table>
-  <div class="no-data" id="noData" style="display:none">No eligible guests found. Guests who departed fewer than 2 days ago are hidden until they settle in — they appear automatically once eligible.</div>
-</div>
-
-<!-- BCC Modal -->
-<div class="modal-overlay" id="modalOverlay">
-  <div class="modal">
-    <h2>Compose Survey Invitation (BCC)</h2>
-    <p style="font-size:.84rem;color:#4a5568;margin-bottom:.75rem"><strong id="modalRecipCount"></strong> recipients will be BCC&rsquo;d.</p>
-    <textarea id="emailBody"></textarea>
-    <div class="modal-actions">
-      <button class="btn-cancel" id="cancelModal">Cancel</button>
-      <button class="btn-send"   id="sendMailtoFinal">Open in Email Client</button>
-    </div>
+  <div class="bulk-bar" id="bulkBar">
+    <input type="checkbox" id="selectAll" title="Select all visible" />
+    <span id="selectedCount">0 selected</span>
+    <button class="btn btn-secondary" id="exportCsvBtn">&#128190; Download CSV</button>
   </div>
-</div>
+
+  <div class="table-wrap">
+    <div id="noData">No guests to display.</div>
+    <table id="guestTable" style="display:none">
+      <thead>
+        <tr>
+          <th><input type="checkbox" id="selectAllHead" /></th>
+          <th>Guest Name</th><th>Email</th><th>Unit / Address</th>
+          <th>Arrival</th><th>Departure</th><th>Email Sent</th><th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="guestBody"></tbody>
+    </table>
+  </div>
+</main>
 
 <!-- Test Email Modal -->
-<div class="modal-overlay" id="testOverlay">
-  <div class="modal">
-    <h2>&#9993; Send Test Survey Email</h2>
-    <p style="font-size:.84rem;color:#4a5568;margin-bottom:.75rem">
-      Enter a destination address. A test copy will be sent via <strong>survey@shorescoa.com</strong> for review.
-    </p>
-    <input type="email" id="testInput" placeholder="you@example.com" />
-    <div id="testResult" style="margin-top:.6rem;font-size:.84rem;min-height:1.4rem"></div>
-    <div class="modal-actions">
-      <button class="btn-cancel" id="cancelTest">Cancel</button>
-      <button class="btn-send"   id="sendTestBtn">Send Test</button>
+<div class="modal-overlay" id="testModal">
+  <div class="modal-box">
+    <h3>&#9993; Send Test Survey Email</h3>
+    <p style="font-size:.85rem;color:#475569;margin-bottom:.75rem">Sends a [TEST] copy via <strong>survey@shorescoa.com</strong> for verification.</p>
+    <input type="email" id="testEmailInput" placeholder="recipient@example.com" />
+    <div id="testResult" style="font-size:.84rem;min-height:1.2rem"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="cancelTest">Cancel</button>
+      <button class="btn btn-info"      id="sendTestBtn">Send Test</button>
     </div>
   </div>
 </div>
 
 <script>
 (function(){
-  const SURVEY_URL   = "https://survey.shorescoa.com/go";
-  const DEFAULT_SUBJ = "Shores of Panama \u2013 We\u2019d Love Your Feedback!";
-  const DEFAULT_BODY = "Dear Guest,\n\nThank you for staying at Shores of Panama! We hope you had a wonderful visit.\n\nWe would love to hear about your experience. Please take a moment to complete our brief guest survey:\n\n" + SURVEY_URL + "\n\nYour feedback helps us continue to improve the property and services for all guests.\n\nThank you,\nShores of Panama COA";
-
-  let allGuests = [], visibleGuests = [];
-
+  'use strict';
   const $ = id => document.getElementById(id);
-  const loadBtn       = $("loadBtn"),    syncBtn     = $("syncBtn"),   testBtn    = $("testBtn");
-  const statusBar     = $("statusBar"),  filterNote  = $("filterNote");
-  const guestTable    = $("guestTable"), guestBody   = $("guestBody"), noData     = $("noData");
-  const bulkBar       = $("bulkBar"),    selectAll   = $("selectAll"), selCount   = $("selectedCount");
-  const openMailtoBtn = $("openMailtoBtn"), markSentBtn = $("markSentBtn"), exportBtn = $("exportCsvBtn");
-  const filterSent    = $("filterSent"), emailCount  = $("emailCount");
-  const modalOverlay  = $("modalOverlay"), cancelModal = $("cancelModal"), sendFinal = $("sendMailtoFinal"), emailBodyTA = $("emailBody"), modalRecip = $("modalRecipCount");
-  const testOverlay   = $("testOverlay"),  cancelTest  = $("cancelTest"),  sendTestBtn = $("sendTestBtn"),  testInput = $("testInput"), testResult = $("testResult");
+  const loadBtn=$('loadBtn'), syncBtn=$('syncBtn'), testBtn=$('testBtn');
+  const filterSel=$('filterSel'), statusBar=$('statusBar'), filterNote=$('filterNote');
+  const bulkBar=$('bulkBar'), selectAll=$('selectAll'), selectAllHead=$('selectAllHead');
+  const selectedCount=$('selectedCount'), exportCsvBtn=$('exportCsvBtn');
+  const guestTable=$('guestTable'), guestBody=$('guestBody'), noData=$('noData');
+  const navSent=$('navSent'), navUnsent=$('navUnsent');
+  const testModal=$('testModal'), testEmailInput=$('testEmailInput');
+  const cancelTest=$('cancelTest'), sendTestBtn=$('sendTestBtn'), testResult=$('testResult');
 
-  function esc(s){ return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
-  function sentBadge(v){ return v==="yes"?'<span class="sent-badge">&#10003; Sent</span>':'<span class="unsent-badge">&#10007; Not Sent</span>'; }
+  let allGuests=[], visibleRows=[];
 
-  function cutoffDate(){
-    const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()-2);
-    return d.toISOString().slice(0,10);
+  function cutoff(){
+    const d=new Date(); d.setDate(d.getDate()-2); return d.toISOString().slice(0,10);
   }
 
-  function applyFilter(){
-    const cutoff = cutoffDate(), f = filterSent.value;
-    const eligible = allGuests.filter(g => g.departure <= cutoff);
-    const hidden   = allGuests.length - eligible.length;
-    visibleGuests  = eligible.filter(g =>
-      f==="all" || (f==="yes" && g.email_sent==="yes") || (f==="no" && g.email_sent!=="yes")
-    );
-    filterNote.textContent = hidden > 0
-      ? "\u26a0\ufe0f " + hidden + " guest" + (hidden>1?"s":"") + " hidden \u2014 departed within the last 2 days. They will appear automatically once eligible."
-      : "";
-    filterNote.style.display = hidden > 0 ? "" : "none";
-    renderTable(visibleGuests);
-  }
-  filterSent.addEventListener("change", applyFilter);
+  function esc(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-  async function apiJson(url, opts){
-    const r = await fetch(url, opts);
-    const t = await r.text();
-    try { return JSON.parse(t); } catch { throw new Error("API error "+r.status); }
+  function sentBadge(v){
+    return v==='yes'
+      ? '<span class="badge-sent">&#10003; Sent</span>'
+      : '<span class="badge-unsent">&#10007; Not Sent</span>';
   }
 
-  // Load
-  loadBtn.addEventListener("click", async()=>{
-    statusBar.innerHTML="<span class='spinner'></span>&nbsp; Loading\u2026";
-    loadBtn.disabled=true; guestTable.style.display="none"; noData.style.display="none"; bulkBar.style.display="none";
-    try {
-      const d = await apiJson("/api/guests");
-      if (!d.ok) throw new Error(d.error||"Load failed");
-      allGuests = d.guests||[];
-      applyFilter();
-      const sent=allGuests.filter(g=>g.email_sent==="yes").length, unsent=allGuests.length-sent;
-      if(emailCount){ emailCount.textContent=sent+" Sent \u2502 "+unsent+" Unsent"; emailCount.style.display=""; }
-      statusBar.innerHTML=`<span class="badge bg-green">${sent} Sent</span> <span class="badge bg-orange">${unsent} Unsent</span> <span style="color:#718096">of ${allGuests.length} total</span>`;
-    } catch(e){ statusBar.innerHTML=`<span class="err">Error: ${esc(e.message)}</span>`; }
-    finally{ loadBtn.disabled=false; }
+  function updateNavBadges(){
+    navSent.textContent   = allGuests.filter(g=>g.email_sent==='yes').length+' Sent';
+    navUnsent.textContent = allGuests.filter(g=>g.email_sent!=='yes').length+' Unsent';
+  }
+
+  function applyFilters(){
+    const cut=cutoff(), mode=filterSel.value;
+    const departed=allGuests.filter(g=>g.departure && g.departure<=cut);
+    const hidden=allGuests.length-departed.length;
+    filterNote.style.display=hidden>0?'block':'none';
+    if(hidden>0) filterNote.textContent=`\u26a0 ${hidden} guest${hidden>1?'s':''} hidden \u2014 departed within the last 2 days. They appear automatically once eligible.`;
+    visibleRows = mode==='sent'   ? departed.filter(g=>g.email_sent==='yes')
+                : mode==='unsent' ? departed.filter(g=>g.email_sent!=='yes')
+                : departed;
+    renderTable(visibleRows);
+    updateNavBadges();
+  }
+
+  filterSel.addEventListener('change',()=>{ if(allGuests.length) applyFilters(); });
+
+  async function apiJson(url,opts){
+    const r=await fetch(url,opts);
+    const t=await r.text();
+    try{return JSON.parse(t);}catch{throw new Error('API error '+r.status);}
+  }
+
+  loadBtn.addEventListener('click',async()=>{
+    statusBar.innerHTML='<span class="spinner"></span>&nbsp; Loading\u2026';
+    loadBtn.disabled=true; guestTable.style.display='none'; noData.style.display='none'; bulkBar.style.display='none';
+    try{
+      const d=await apiJson('/api/guests');
+      if(!d.ok) throw new Error(d.error||'Load failed');
+      allGuests=d.guests||[];
+      applyFilters();
+      statusBar.innerHTML=`Loaded <strong>${allGuests.length}</strong> total guests.`;
+    }catch(e){statusBar.innerHTML=`<span class="err">Error: ${esc(e.message)}</span>`;}
+    finally{loadBtn.disabled=false;}
   });
 
-  // Sync
-  syncBtn.addEventListener("click", async()=>{
-    statusBar.innerHTML="<span class='spinner'></span>&nbsp; Syncing from Symliv\u2026";
+  syncBtn.addEventListener('click',async()=>{
+    statusBar.innerHTML='<span class="spinner"></span>&nbsp; Syncing from Symliv\u2026';
     syncBtn.disabled=true;
-    try {
-      const d = await apiJson("/api/sync-guests",{method:"POST"});
-      if (!d.ok) throw new Error(d.error||"Sync failed");
-      statusBar.innerHTML=`&#10003; Sync complete &mdash; <strong>${d.inserted}</strong> new, ${d.skipped} already existed. <em>Click Load Guests to refresh.</em>`;
-    } catch(e){ statusBar.innerHTML=`<span class="err">Sync error: ${esc(e.message)}</span>`; }
-    finally{ syncBtn.disabled=false; }
+    try{
+      const d=await apiJson('/api/sync-guests',{method:'POST'});
+      if(!d.ok) throw new Error(d.error||'Sync failed');
+      statusBar.innerHTML=`&#10003; Sync complete \u2014 ${d.inserted??0} new guest${d.inserted!==1?'s':''} added.`;
+      const r2=await apiJson('/api/guests');
+      allGuests=r2.guests||[]; applyFilters();
+    }catch(e){statusBar.innerHTML=`<span class="err">Sync error: ${esc(e.message)}</span>`;}
+    finally{syncBtn.disabled=false;}
   });
 
-  // Render
   function renderTable(rows){
-    guestBody.innerHTML="";
-    if(!rows.length){ noData.style.display="block"; guestTable.style.display="none"; bulkBar.style.display="none"; return; }
+    guestBody.innerHTML='';
+    if(!rows.length){noData.style.display='block';guestTable.style.display='none';bulkBar.style.display='none';return;}
+    noData.style.display='none'; guestTable.style.display=''; bulkBar.style.display='flex';
     rows.forEach((g,i)=>{
-      const sent=g.email_sent==="yes", hasEmail=!!g.email;
-      const tr=document.createElement("tr"); if(sent) tr.classList.add("sent-row"); tr.dataset.idx=i;
+      const has=!!g.email, sent=g.email_sent==='yes';
+      const tr=document.createElement('tr'); tr.dataset.idx=i;
       tr.innerHTML=`
-        <td><input type="checkbox" class="row-check" data-idx="${i}" ${hasEmail?"":"disabled"}/></td>
-        <td class="left">${esc(g.guest_name)}</td>
-        <td class="left">${esc(g.email)}</td>
+        <td><input type="checkbox" class="row-check" data-idx="${i}" ${has?'':'disabled'}/></td>
+        <td>${esc(g.guest_name)}</td>
+        <td>${has?esc(g.email):'<span class="no-email">no email</span>'}</td>
         <td>${esc(g.unit)}</td>
         <td>${esc(g.arrival)}</td>
         <td>${esc(g.departure)}</td>
-        <td id="sent-${g.id}">${sentBadge(g.email_sent)}</td>
-        <td>${hasEmail?`<button class="send-btn${sent?" done":""}" data-id="${g.id}" data-idx="${i}" ${sent?"disabled":""}>${sent?"&#10003; Sent":"Send"}</button>`:"&mdash;"}</td>`;
+        <td id="sc-${g.id}">${sentBadge(g.email_sent)}</td>
+        <td>${has?`<button class="send-btn" data-id="${g.id}" data-idx="${i}">${sent?'Resend':'Send'}</button>`:'&mdash;'}</td>`;
       guestBody.appendChild(tr);
     });
-    guestTable.style.display=""; bulkBar.style.display="flex"; selectAll.checked=false; updateCount();
-    document.querySelectorAll(".row-check").forEach(c=>c.addEventListener("change",updateCount));
-    document.querySelectorAll(".send-btn:not([disabled])").forEach(b=>b.addEventListener("click",onSend));
+    document.querySelectorAll('.row-check').forEach(c=>c.addEventListener('change',updateSel));
+    document.querySelectorAll('.send-btn').forEach(b=>b.addEventListener('click',onSend));
+    selectAll.checked=false; selectAllHead.checked=false; updateSel();
   }
 
-  function updateCount(){
-    const n=document.querySelectorAll(".row-check:checked").length;
-    selCount.textContent=n+" selected"; openMailtoBtn.disabled=n===0; markSentBtn.disabled=n===0;
+  function updateSel(){
+    const n=document.querySelectorAll('.row-check:checked').length;
+    selectedCount.textContent=n+' selected';
   }
-  selectAll.addEventListener("change",()=>{
-    document.querySelectorAll(".row-check:not([disabled])").forEach(c=>{c.checked=selectAll.checked;});
-    updateCount();
-  });
 
-  // Individual send via SMTP API
+  function syncChecks(v){
+    document.querySelectorAll('.row-check:not([disabled])').forEach(c=>{c.checked=v;});
+    updateSel();
+  }
+  selectAll.addEventListener('change',()=>syncChecks(selectAll.checked));
+  selectAllHead.addEventListener('change',()=>{selectAll.checked=selectAllHead.checked;syncChecks(selectAllHead.checked);});
+
   async function onSend(e){
-    const btn=e.currentTarget, id=parseInt(btn.dataset.id), idx=parseInt(btn.dataset.idx), g=visibleGuests[idx];
+    const btn=e.currentTarget, id=parseInt(btn.dataset.id), idx=parseInt(btn.dataset.idx), g=visibleRows[idx];
     if(!g?.email) return;
-    btn.textContent="Sending\u2026"; btn.classList.add("sending");
-    try {
-      const d=await apiJson("/api/send-email",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({to:g.email,guestName:g.guest_name})});
-      if(!d.ok) throw new Error(d.error||"Send failed");
-      await apiJson("/api/guests",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,emailSent:"yes"})});
-      g.email_sent="yes";
-      const cell=$("sent-"+id); if(cell) cell.innerHTML=sentBadge("yes");
-      btn.closest("tr")?.classList.add("sent-row");
-      btn.textContent="&#10003; Sent"; btn.classList.remove("sending"); btn.classList.add("done"); btn.disabled=true;
-    } catch(err){
-      btn.textContent="Retry"; btn.classList.remove("sending"); btn.classList.add("failed");
+    btn.disabled=true; btn.textContent='Sending\u2026';
+    try{
+      const d=await apiJson('/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:g.email,name:g.guest_name})});
+      if(!d.ok) throw new Error(d.error||'Send failed');
+      await apiJson('/api/guests',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,emailSent:'yes'})});
+      g.email_sent='yes';
+      const cell=$('sc-'+id); if(cell) cell.innerHTML=sentBadge('yes');
+      btn.textContent='&#10003; Sent'; btn.disabled=false;
+      updateNavBadges();
+    }catch(err){
+      btn.textContent='Retry'; btn.disabled=false;
       statusBar.innerHTML=`<span class="err">Send failed for ${esc(g.email)}: ${esc(err.message)}</span>`;
     }
   }
 
-  // BCC mailto
-  openMailtoBtn.addEventListener("click",()=>{
-    const sel=[...document.querySelectorAll(".row-check:checked")].map(c=>visibleGuests[parseInt(c.dataset.idx)]).filter(g=>g?.email);
-    if(!sel.length) return;
-    modalRecip.textContent="("+sel.length+" recipient"+(sel.length>1?"s":"")+")";
-    emailBodyTA.value=DEFAULT_BODY; modalOverlay._sel=sel; modalOverlay.classList.add("open");
-  });
-  cancelModal.addEventListener("click",()=>modalOverlay.classList.remove("open"));
-  modalOverlay.addEventListener("click",e=>{if(e.target===modalOverlay)modalOverlay.classList.remove("open");});
-  sendFinal.addEventListener("click",()=>{
-    const rows=modalOverlay._sel||[];
-    window.open("mailto:?bcc="+rows.map(r=>r.email).join(";")+"&subject="+encodeURIComponent(DEFAULT_SUBJ)+"&body="+encodeURIComponent(emailBodyTA.value),"_blank");
-    modalOverlay.classList.remove("open");
+  exportCsvBtn.addEventListener('click',()=>{
+    if(!visibleRows.length) return;
+    const hdr=['id','guest_name','email','unit','arrival','departure','email_sent'];
+    const lines=[hdr.join(','),...visibleRows.map(g=>hdr.map(h=>`"${String(g[h]??'').replace(/"/g,'""')}"`).join(','))];
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([lines.join('\r\n')],{type:'text/csv'}));
+    a.download='shores-guests-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
   });
 
-  // Mark sent
-  markSentBtn.addEventListener("click",async()=>{
-    const sel=[...document.querySelectorAll(".row-check:checked")].map(c=>visibleGuests[parseInt(c.dataset.idx)]).filter(Boolean);
-    for(const g of sel){
-      try{
-        await apiJson("/api/guests",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:g.id,emailSent:"yes"})});
-        g.email_sent="yes";
-        const cell=$("sent-"+g.id); if(cell) cell.innerHTML=sentBadge("yes");
-        guestTable.querySelector(`tr[data-idx="${visibleGuests.indexOf(g)}"]`)?.classList.add("sent-row");
-      }catch(err){console.error(err);}
-    }
-    updateCount();
-  });
+  testBtn.addEventListener('click',()=>{testEmailInput.value='';testResult.textContent='';testModal.classList.add('open');testEmailInput.focus();});
+  cancelTest.addEventListener('click',()=>testModal.classList.remove('open'));
+  testModal.addEventListener('click',e=>{if(e.target===testModal)testModal.classList.remove('open');});
 
-  // CSV
-  exportBtn.addEventListener("click",()=>{
-    if(!visibleGuests.length) return;
-    const hdr=["id","guest_name","email","unit","arrival","departure","email_sent"];
-    const lines=[hdr.join(","),...visibleGuests.map(g=>hdr.map(h=>`"${String(g[h]??"").replace(/"/g,'""')}"`).join(","))];
-    const a=document.createElement("a");
-    a.href=URL.createObjectURL(new Blob([lines.join("\r\n")],{type:"text/csv"}));
-    a.download="shores-guests-"+new Date().toISOString().slice(0,10)+".csv"; a.click();
-  });
-
-  // Test email
-  testBtn.addEventListener("click",()=>{ testInput.value=""; testResult.textContent=""; testOverlay.classList.add("open"); setTimeout(()=>testInput.focus(),80); });
-  cancelTest.addEventListener("click",()=>testOverlay.classList.remove("open"));
-  testOverlay.addEventListener("click",e=>{if(e.target===testOverlay)testOverlay.classList.remove("open");});
-  sendTestBtn.addEventListener("click",async()=>{
-    const addr=testInput.value.trim();
+  sendTestBtn.addEventListener('click',async()=>{
+    const addr=testEmailInput.value.trim();
     if(!addr){testResult.innerHTML='<span class="err">Please enter an email address.</span>';return;}
-    sendTestBtn.disabled=true; testResult.innerHTML="<span class='spinner'></span>&nbsp; Sending\u2026";
+    sendTestBtn.disabled=true; testResult.innerHTML='<span class="spinner"></span>&nbsp; Sending\u2026';
     try{
-      const d=await apiJson("/api/send-email",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({to:addr,guestName:"Test Guest",isTest:true})});
-      if(!d.ok) throw new Error(d.error||"Send failed");
-      testResult.innerHTML=`<span style="color:#276749">&#10003; Test email sent to <strong>${esc(addr)}</strong> via survey@shorescoa.com</span>`;
+      const d=await apiJson('/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:addr,name:'Test Guest',test:true})});
+      if(!d.ok) throw new Error(d.error||'Failed');
+      testResult.innerHTML=`<span style="color:#16a34a">&#10003; Test sent to <strong>${esc(addr)}</strong></span>`;
     }catch(err){
-      testResult.innerHTML=`<span class="err">&#10007; Failed: ${esc(err.message)}</span>`;
-    }finally{ sendTestBtn.disabled=false; }
+      testResult.innerHTML=`<span class="err">&#10007; ${esc(err.message)}</span>`;
+    }finally{sendTestBtn.disabled=false;}
   });
+
+  loadBtn.click();
 })();
 </script>
 </body>
