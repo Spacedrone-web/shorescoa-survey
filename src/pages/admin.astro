@@ -1,4 +1,4 @@
-﻿---
+---
 export const prerender = false;
 
 const ADMIN_PASSWORD = 'Shores9900!';
@@ -42,13 +42,13 @@ if (authed) {
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Admin â€“ Shores of Panama Survey</title>
+  <title>Admin “ Shores of Panama Survey</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f4f8;min-height:100vh}
 
-    /* â”€â”€ Login â”€â”€ */
+    /* Login */
     .login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh}
     .login-card{background:#fff;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,.12);padding:3rem 2.5rem;width:100%;max-width:380px;text-align:center}
     .login-logo{font-size:1.5rem;font-weight:800;color:#0a2744;letter-spacing:2px;margin-bottom:.4rem}
@@ -60,7 +60,7 @@ if (authed) {
     .login-btn:hover{background:#163d6b}
     .login-error{margin-top:.8rem;color:#e53e3e;font-size:.87rem}
 
-    /* â”€â”€ Header â”€â”€ */
+    /* Header */
     .header{background:#0a2744;color:#fff;padding:.9rem 1.5rem;display:flex;align-items:center;justify-content:space-between}
     .header h1{font-size:1.25rem;font-weight:800;letter-spacing:1px}
     .header-right{display:flex;align-items:center;gap:1rem}
@@ -68,7 +68,7 @@ if (authed) {
     .logout-btn{background:transparent;border:1.5px solid rgba(255,255,255,.5);color:#fff;padding:.35rem .9rem;border-radius:6px;font-size:.82rem;cursor:pointer;transition:all .2s}
     .logout-btn:hover{background:rgba(255,255,255,.15)}
 
-    /* â”€â”€ Filter bar â”€â”€ */
+    /* Filter bar */
     .filter-bar{background:#fff;border-bottom:1px solid #e2e8f0;padding:.9rem 1.5rem;display:flex;flex-wrap:wrap;gap:.75rem;align-items:center}
     .filter-bar label{font-size:.78rem;font-weight:600;color:#4a5568;white-space:nowrap}
     .filter-bar input[type=date],.filter-bar select{padding:.38rem .65rem;border:1.5px solid #cbd5e0;border-radius:6px;font-size:.82rem;outline:none;background:#fff;color:#2d3748}
@@ -80,13 +80,13 @@ if (authed) {
     .csv-btn:hover{background:#b8963e}
     .sep{width:1px;height:28px;background:#e2e8f0;margin:0 .25rem}
 
-    /* â”€â”€ Section checkboxes â”€â”€ */
+    /* Section checkboxes */
     .section-bar{background:#f8fafc;border-bottom:1px solid #e2e8f0;padding:.65rem 1.5rem;display:flex;flex-wrap:wrap;gap:.5rem 1.25rem;align-items:center}
     .section-bar span{font-size:.78rem;font-weight:700;color:#4a5568;margin-right:.5rem;text-transform:uppercase;letter-spacing:.5px}
     .section-bar label{display:flex;align-items:center;gap:.35rem;font-size:.82rem;color:#2d3748;cursor:pointer;white-space:nowrap}
     .section-bar input[type=checkbox]{accent-color:#0a2744;width:15px;height:15px;cursor:pointer}
 
-    /* â”€â”€ Table â”€â”€ */
+    /*  Table  */
     .table-wrap{overflow-x:auto;max-height:calc(100vh - 230px)}
     table{width:100%;border-collapse:collapse;font-size:.82rem}
     thead th{position:sticky;top:0;background:#0a2744;color:#fff;padding:.6rem .75rem;text-align:center;white-space:nowrap;cursor:pointer;user-select:none;z-index:2}
@@ -102,7 +102,7 @@ if (authed) {
     .section-hdr th{background:#4a6fa5 !important;font-size:.72rem;text-transform:uppercase;letter-spacing:.5px}
     td.empty{color:#a0aec0}
 
-    /* â”€â”€ DB error â”€â”€ */
+    /*  DB error */
     .db-error{background:#fff5f5;border:1px solid #fc8181;color:#c53030;padding:1rem 1.5rem;margin:1rem;border-radius:8px;font-size:.9rem}
       thead th{text-align:center !important}
       thead th{text-align:center !important}
@@ -191,7 +191,7 @@ if (authed) {
 )}
 
 <script define:vars={{ allRows: rows }}>
-// â”€â”€ Column definitions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Column definitions
 const SECTIONS = {
   checkin: {
     label: 'Check-in Ratings',
@@ -254,7 +254,7 @@ let currentData = Array.isArray(allRows) ? allRows : [];
 let sortCol = 'submitted_at';
 let sortDir = 'desc';
 
-// â”€â”€ Active sections â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Active sections
 function getActiveSections() {
   return Object.keys(SECTIONS).filter(s => {
     const el = document.getElementById('s-' + s);
@@ -269,7 +269,7 @@ function getVisibleCols() {
   return cols;
 }
 
-// â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Render
 function fmt(val) {
   if (val === null || val === undefined || val === '') return '';
   if (typeof val === 'string' && val.includes('T')) return val.split('T')[0];
@@ -339,7 +339,7 @@ function renderTable(data) {
   document.getElementById('count-badge').textContent = `${data.length} response${data.length !== 1 ? 's' : ''}`;
 }
 
-// â”€â”€ Sort â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Sort 
 function sortBy(col) {
   if (sortCol === col) {
     sortDir = sortDir === 'asc' ? 'desc' : 'asc';
@@ -352,7 +352,7 @@ function sortBy(col) {
   applyFilters();
 }
 
-// â”€â”€ Filter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Filter
 function applyFilters() {
   sortCol = document.getElementById('f-sort').value;
   sortDir = document.getElementById('f-dir').value;
@@ -378,7 +378,7 @@ function applyFilters() {
   renderTable(data);
 }
 
-// â”€â”€ Section toggles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Section toggles
 function updateSections() {
   const allCb = document.getElementById('s-all');
   const sectionCbs = ['checkin','staff','clean','overall','recommend'];
@@ -394,7 +394,7 @@ function toggleAll(cb) {
   applyFilters();
 }
 
-// â”€â”€ CSV export â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// CSV export
 function downloadCSV() {
   const cols = getVisibleCols();
   const from = document.getElementById('f-from').value;
@@ -413,7 +413,7 @@ function downloadCSV() {
   a.click();
 }
 
-// â”€â”€ Init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//Init
 if (document.getElementById('data-table')) {
   // Button listeners
   document.getElementById('apply-btn').addEventListener('click', applyFilters);

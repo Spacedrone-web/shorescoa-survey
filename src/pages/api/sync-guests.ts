@@ -1,181 +1,210 @@
 ﻿export const prerender = false;
-import type { APIContext } from 'astro';
+import type { APIContext } from "astro";
 
-function j(data: unknown, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { 'Content-Type': 'application/json' }
-  });
+const GQL  = "https://8ftizrpawz.us-east-2.awsapprunner.com/graphql";
+const COMM = "shoresofpanama";
+
+const HDR: Record<string,string> = {
+  "accept":"*/*",
+  "content-type":"application/json",
+  "Origin":"https://client-admin.symliv.com",
+  "Referer":"https://client-admin.symliv.com/",
+  "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/147.0 Safari/537.36",
+};
+
+// ---------------------------------------------------------
+// Generic GraphQL helper
+// ---------------------------------------------------------
+async function gql(query: string, variables: Record<string,any>={}, token?: string): Promise<any> {
+  const headers = { ...HDR };
+  if (token) headers["authorization"] = "Bearer " + token;
+
+  const ctrl = new AbortController();
+  const timeout = setTimeout(() => ctrl.abort(), 20000);
+
+  let resp: Response;
+  try {
+    resp = await fetch(GQL, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ query, variables }),
+      signal: ctrl.signal
+    });
+  } catch (err: any) {
+    clearTimeout(timeout);
+    throw new Error("Network error: " + String(err?.message ?? err));
+  }
+
+  clearTimeout(timeout);
+
+  const text = await resp.text();
+  let json: any;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new Error("Symliv " + resp.status + ": " + text.slice(0,120));
+  }
+
+  if (json?.errors?.length) {
+    throw new Error(json.errors[0]?.message ?? JSON.stringify(json.errors));
+  }
+
+  return json;
 }
 
-export async function POST({ request, cookies, locals }: APIContext) {
-  // Dual auth: browser cookie OR GitHub Actions X-Sync-Key header
-  const cookieOk = cookies.get('admin_auth')?.value === 'shores-admin-ok';
-  const syncKey  = (locals as any).runtime?.env?.SYNC_KEY ?? '';
-  const headerOk = syncKey && request.headers.get('X-Sync-Key') === syncKey;
-  if (!cookieOk && !headerOk) return j({ ok: false, error: 'Unauthorized' }, 401);
+// ---------------------------------------------------------
+// Token helpers
+// ---------------------------------------------------------
+async function getCommunityToken(): Promise<string> {
+  const r = await gql(
+    `query getCommunityToken($c:String!){
+      getCommunityToken(communityId:$c){success error token}
+    }`,
+    { c: COMM }
+  );
 
-  const env = (locals as any).runtime?.env;
-  const DB  = env?.DB;
-  if (!DB) return j({ ok: false, error: 'DB binding missing' }, 500);
+  const p = r?.data?.getCommunityToken;
+  if (!p?.success || !p?.token) {
+    throw new Error("getCommunityToken: " + (p?.error ?? "no token"));
+  }
+
+  return p.token;
+}
+
+async function loginUser(email: string, password: string, communityToken: string): Promise<string> {
+  const r = await gql(
+    `query LoginUser($p:String!,$e:String!){
+      loginUser(password:$p,email:$e){success error token}
+    }`,
+    { p: password, e: email },
+    communityToken
+  );
+
+  const d = r?.data?.loginUser;
+  if (!d?.success || !d?.token) {
+    throw new Error("loginUser: " + (d?.error ?? "no token"));
+  }
+
+  return d.token;
+}
+
+// ---------------------------------------------------------
+// Fetch passes (modern schema)
+// ---------------------------------------------------------
+async function fetchPasses(userToken: string): Promise<any[]> {
+  const r = await gql(
+    `query GetAllPasses {
+      getAllPasses {
+        success error
+        data {
+          paid
+          startDate
+          endDate
+          createdAt
+          communityRental { address }
+          userInfo { firstName lastName email }
+          passInfo { name }
+        }
+      }
+    }`,
+    {},
+    userToken
+  );
+
+  const p = r?.data?.getAllPasses;
+  if (!p?.success) {
+    throw new Error("getAllPasses: " + (p?.error ?? "fail"));
+  }
+
+  return p?.data ?? [];
+}
+
+// ---------------------------------------------------------
+// Main sync endpoint
+// ---------------------------------------------------------
+export async function POST({ request, cookies, locals }: APIContext) {
+  const json = (obj: any, status = 200) =>
+    new Response(JSON.stringify(obj), {
+      status,
+      headers: { "Content-Type": "application/json" }
+    });
+
+  const env = (locals as any).runtime?.env ?? {};
+  const DB  = env.DB;
+
+  const cookieOk = cookies.get("admin_auth")?.value === "shores-admin-ok";
+  const keyOk    = (env.SYNC_KEY ?? "") &&
+                   request.headers.get("X-Sync-Key") === (env.SYNC_KEY ?? "");
+
+  if (!cookieOk && !keyOk) {
+    return json({ ok: false, error: "Unauthorized" }, 401);
+  }
+
+  if (!DB) {
+    return json({ ok: false, error: "DB not configured" }, 500);
+  }
 
   try {
-    // ── Ensure tables exist ───────────────────────────────────────
-    await DB.prepare(`
-      CREATE TABLE IF NOT EXISTS guests (
-        id         INTEGER PRIMARY KEY AUTOINCREMENT,
-        guest_name TEXT,
-        email      TEXT,
-        arrival    TEXT,
-        departure  TEXT,
-        unit       TEXT,
-        email_sent TEXT DEFAULT 'no',
-        createdAt  TEXT
-      )
-    `).run();
+    // Step 1: Tokens
+    const communityToken = await getCommunityToken();
+    const userToken = await loginUser(
+      env.SYMLIV_EMAIL ?? "jim@shorescoa.com",
+      env.SYMLIV_PASSWORD ?? "Chester12C",
+      communityToken
+    );
 
-    await DB.prepare(`
-      CREATE TABLE IF NOT EXISTS meta (
-        key   TEXT PRIMARY KEY,
-        value TEXT
-      )
-    `).run();
+    // Step 2: Fetch passes
+    const passes = await fetchPasses(userToken);
 
-    await DB.prepare(`
-      CREATE UNIQUE INDEX IF NOT EXISTS idx_guest_dedup ON guests(email, arrival, departure)
-    `).run().catch(() => {/* index may already exist */});
+    // Step 3: Filter passes
+    const filtered = passes.filter((p: any) =>
+      p.passInfo?.name === "Registration Fee" &&
+      ["paid", "ach-pending"].includes(p.paid)
+    );
 
-    // Ensure createdAt column exists (safe if already present)
-    await DB.prepare(`ALTER TABLE guests ADD COLUMN createdAt TEXT`).run()
-      .catch(() => {/* column may already exist */});
+    let inserted = 0;
+    let skipped  = 0;
 
-    // ── Symliv auth ──────────────────────────────────────────────
-    const SYMLIV_EMAIL    = env.SYMLIV_EMAIL    ?? '';
-    const SYMLIV_PASSWORD = env.SYMLIV_PASSWORD ?? '';
-    const GQL = 'https://8ftizrpawz.us-east-2.awsapprunner.com/graphql';
-
-    // Step 1: community token
-    const tokenRes  = await fetch(GQL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query: `query getCommunityToken($communityId: String!) {
-          getCommunityToken(communityId: $communityId) {
-            success
-            error
-            token
-          }
-        }`,
-        variables: { communityId: "shoresofpanama" },
-        operationName: "getCommunityToken"
-      })
-    });
-
-    const tokenData = await tokenRes.json();
-    const communityToken = tokenData?.data?.getCommunityToken?.token;
-    if (!communityToken) return j({ ok: false, error: 'Failed to get community token' }, 500);
-
-    // Step 2: user token
-    const loginRes  = await fetch(GQL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${communityToken}`
-      },
-      body: JSON.stringify({
-        query: `query LoginUser($password: String!, $email: String!) {
-          loginUser(password: $password, email: $email) {
-            success
-            error
-            token
-            data {
-              userId
-              communityCode
-              firstName
-              lastName
-              email
-              roles
-              phoneNumber
-              status
-            }
-          }
-        }`,
-        variables: { email: SYMLIV_EMAIL, password: SYMLIV_PASSWORD },
-        operationName: "LoginUser"
-      })
-    });
-
-    const loginData = await loginRes.json();
-    const userToken = loginData?.data?.loginUser?.token;
-    if (!userToken) return j({ ok: false, error: 'Symliv login failed' }, 500);
-
-	// Step 3: fetch all passes (correct Symliv schema)
-	const passRes  = await fetch(GQL, {
-	  method: 'POST',
-	  headers: {
-		'Content-Type': 'application/json',
-		'Authorization': `Bearer ${userToken}`
-	  },
-	  body: JSON.stringify({
-		query: `query GetAllPasses {
-		  getAllPasses {
-			success
-			error
-			data {
-			  paid
-			  startDate
-			  endDate
-			  createdAt
-			  communityRental { address }
-			  userInfo { firstName lastName email }
-			  passInfo { name }
-			}
-		  }
-		}`,
-		operationName: "GetAllPasses"
-	  })
-	});
-
-	const passData = await passRes.json();
-	const passes   = passData?.data?.getAllPasses?.data ?? [];
-
-
-    // Filter: only paid passes (archive behavior)
-    const filtered = passes.filter((p: any) => p.paid === true || p.paid === "true");
-
-    // ── INSERT OR IGNORE — never overwrites email_sent ───────────
-    let inserted = 0, skipped = 0;
-
+    // Step 4: Insert into D1
     for (const p of filtered) {
-      try {
-        const guestName = `${p.userInfo?.firstName ?? ''} ${p.userInfo?.lastName ?? ''}`.trim();
-        const email     = p.userInfo?.email ?? '';
-        const arrival   = p.startDate ?? '';
-        const departure = p.endDate ?? '';
-        const unit      = p.communityRental?.address ?? '';
-        const createdAt = p.createdAt ?? '';
+      const name  = `${p.userInfo?.firstName ?? ""} ${p.userInfo?.lastName ?? ""}`.trim();
+      const email = p.userInfo?.email ?? "";
+      const arr   = (p.startDate ?? "").slice(0, 10);
+      const dep   = (p.endDate ?? "").slice(0, 10);
+      const unit  = p.communityRental?.address ?? "";
+      const createdAt = p.createdAt ?? "";
 
-        const result = await DB.prepare(
-          `INSERT OR IGNORE INTO guests(guest_name, email, arrival, departure, unit, createdAt)
-           VALUES(?, ?, ?, ?, ?, ?)`
-        ).bind(guestName, email, arrival, departure, unit, createdAt).run();
-
-        if ((result.meta?.changes ?? 0) > 0) inserted++;
-        else skipped++;
-      } catch {
+      if (!email || !arr) {
         skipped++;
+        continue;
+      }
+
+      try {
+        await DB.prepare(
+          `INSERT INTO guests (guest_name, email, arrival, departure, unit, createdAt)
+           VALUES (?, ?, ?, ?, ?, ?)`
+        )
+        .bind(name, email, arr, dep, unit, createdAt)
+        .run();
+
+        inserted++;
+      } catch (err: any) {
+        if (String(err?.message ?? "").includes("UNIQUE")) {
+          skipped++;
+        } else {
+          throw err;
+        }
       }
     }
 
-    // ── Write last_synced timestamp ───────────────────────────────
-    const now = new Date().toISOString();
-    await DB.prepare(
-      `INSERT OR REPLACE INTO meta(key, value) VALUES('last_synced', ?)`
-    ).bind(now).run();
-
-    return j({ ok: true, inserted, skipped, total: filtered.length, last_synced: now });
+    return json({
+      ok: true,
+      inserted,
+      skipped,
+      total: filtered.length
+    });
 
   } catch (err: any) {
-    return j({ ok: false, error: String(err?.message ?? err) }, 500);
+    return json({ ok: false, error: String(err?.message ?? err) }, 500);
   }
 }
