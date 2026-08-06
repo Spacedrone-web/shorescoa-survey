@@ -20,7 +20,7 @@ export async function POST({ request, cookies, locals }: APIContext) {
   if (!DB) return j({ ok: false, error: 'DB binding missing' }, 500);
 
   try {
-    // Ensure tables exist
+    // ── Ensure tables exist ───────────────────────────────────────
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS guests (
         id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29,7 +29,8 @@ export async function POST({ request, cookies, locals }: APIContext) {
         arrival    TEXT,
         departure  TEXT,
         unit       TEXT,
-        email_sent TEXT DEFAULT 'no'
+        email_sent TEXT DEFAULT 'no',
+        createdAt  TEXT
       )
     `).run();
 
@@ -44,6 +45,10 @@ export async function POST({ request, cookies, locals }: APIContext) {
       CREATE UNIQUE INDEX IF NOT EXISTS idx_guest_dedup ON guests(email, arrival, departure)
     `).run().catch(() => {/* index may already exist */});
 
+    // Ensure createdAt column exists (safe if already present)
+    await DB.prepare(`ALTER TABLE guests ADD COLUMN createdAt TEXT`).run()
+      .catch(() => {/* column may already exist */});
+
     // ── Symliv auth ──────────────────────────────────────────────
     const SYMLIV_EMAIL    = env.SYMLIV_EMAIL    ?? '';
     const SYMLIV_PASSWORD = env.SYMLIV_PASSWORD ?? '';
@@ -54,63 +59,106 @@ export async function POST({ request, cookies, locals }: APIContext) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        query: `query { getCommunityToken(communityId: "shoresofpanama") }`
+        query: `query getCommunityToken($communityId: String!) {
+          getCommunityToken(communityId: $communityId) {
+            success
+            error
+            token
+          }
+        }`,
+        variables: { communityId: "shoresofpanama" },
+        operationName: "getCommunityToken"
       })
     });
-    const tokenData = await tokenRes.json() as any;
+
+    const tokenData = await tokenRes.json();
     const communityToken = tokenData?.data?.getCommunityToken?.token;
     if (!communityToken) return j({ ok: false, error: 'Failed to get community token' }, 500);
 
     // Step 2: user token
     const loginRes  = await fetch(GQL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${communityToken}` },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${communityToken}`
+      },
       body: JSON.stringify({
-        query: `mutation {
-          loginUser(email: "${SYMLIV_EMAIL}", password: "${SYMLIV_PASSWORD}") { token }
-        }`
+        query: `query LoginUser($password: String!, $email: String!) {
+          loginUser(password: $password, email: $email) {
+            success
+            error
+            token
+            data {
+              userId
+              communityCode
+              firstName
+              lastName
+              email
+              roles
+              phoneNumber
+              status
+            }
+          }
+        }`,
+        variables: { email: SYMLIV_EMAIL, password: SYMLIV_PASSWORD },
+        operationName: "LoginUser"
       })
     });
-    const loginData = await loginRes.json() as any;
+
+    const loginData = await loginRes.json();
     const userToken = loginData?.data?.loginUser?.token;
     if (!userToken) return j({ ok: false, error: 'Symliv login failed' }, 500);
 
-    // Step 3: fetch all passes
+    // Step 3: fetch all passes (correct archive schema + createdAt)
     const passRes  = await fetch(GQL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userToken}` },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${userToken}`
+      },
       body: JSON.stringify({
-        query: `query {
-          getAllPasses(communityId: "shoresofpanama") {
-            id guestName email arrivalDate departureDate unit status
+        query: `query GetAllPasses {
+          getAllPasses {
+            success
+            error
+            data {
+              paid
+              startDate
+              endDate
+              createdAt
+              communityRental { address }
+              userInfo { firstName lastName email }
+              passInfo { name }
+            }
           }
-        }`
+        }`,
+        operationName: "GetAllPasses"
       })
     });
-    const passData = await passRes.json() as any;
-    const passes   = passData?.data?.getAllPasses ?? [];
 
-    // Filter to active/confirmed/approved only
-    const filtered = passes.filter((p: any) =>
-      (p.status ?? '').toLowerCase().includes('active') ||
-	  (p.status ?? '').toLowerCase().includes('confirmed') ||
-	  (p.status ?? '').toLowerCase().includes('approved')
-    );
+    const passData = await passRes.json();
+    const passes   = passData?.data?.getAllPasses?.data ?? [];
+
+    // Filter: only paid passes (archive behavior)
+    const filtered = passes.filter((p: any) => p.paid === true || p.paid === "true");
 
     // ── INSERT OR IGNORE — never overwrites email_sent ───────────
     let inserted = 0, skipped = 0;
+
     for (const p of filtered) {
       try {
+        const guestName = `${p.userInfo?.firstName ?? ''} ${p.userInfo?.lastName ?? ''}`.trim();
+        const email     = p.userInfo?.email ?? '';
+        const arrival   = p.startDate ?? '';
+        const departure = p.endDate ?? '';
+        const unit      = p.communityRental?.address ?? '';
+        const createdAt = p.createdAt ?? '';
+
         const result = await DB.prepare(
-          `INSERT OR IGNORE INTO guests(guest_name, email, arrival, departure, unit)
-           VALUES(?, ?, ?, ?, ?)`
-        ).bind(
-          p.guestName     ?? p.guest_name   ?? '',
-          p.email         ?? '',
-          p.arrivalDate   ?? p.arrival      ?? '',
-          p.departureDate ?? p.departure    ?? '',
-          p.unit          ?? ''
-        ).run();
+          `INSERT OR IGNORE INTO guests(guest_name, email, arrival, departure, unit, createdAt)
+           VALUES(?, ?, ?, ?, ?, ?)`
+        ).bind(guestName, email, arrival, departure, unit, createdAt).run();
+
         if ((result.meta?.changes ?? 0) > 0) inserted++;
         else skipped++;
       } catch {
@@ -118,7 +166,7 @@ export async function POST({ request, cookies, locals }: APIContext) {
       }
     }
 
-    // ── Write last_synced timestamp to meta ──────────────────────
+    // ── Write last_synced timestamp ───────────────────────────────
     const now = new Date().toISOString();
     await DB.prepare(
       `INSERT OR REPLACE INTO meta(key, value) VALUES('last_synced', ?)`
@@ -130,4 +178,3 @@ export async function POST({ request, cookies, locals }: APIContext) {
     return j({ ok: false, error: String(err?.message ?? err) }, 500);
   }
 }
-
