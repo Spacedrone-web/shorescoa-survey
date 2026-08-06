@@ -109,35 +109,36 @@ export async function POST({ request, cookies, locals }: APIContext) {
     const userToken = loginData?.data?.loginUser?.token;
     if (!userToken) return j({ ok: false, error: 'Symliv login failed' }, 500);
 
-    // Step 3: fetch all passes (correct archive schema + createdAt)
-    const passRes  = await fetch(GQL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${userToken}`
-      },
-      body: JSON.stringify({
-        query: `query GetAllPasses {
-          getAllPasses {
-            success
-            error
-            data {
-              paid
-              startDate
-              endDate
-              createdAt
-              communityRental { address }
-              userInfo { firstName lastName email }
-              passInfo { name }
-            }
-          }
-        }`,
-        operationName: "GetAllPasses"
-      })
-    });
+	// Step 3: fetch all passes (correct Symliv schema)
+	const passRes  = await fetch(GQL, {
+	  method: 'POST',
+	  headers: {
+		'Content-Type': 'application/json',
+		'Authorization': `Bearer ${userToken}`
+	  },
+	  body: JSON.stringify({
+		query: `query GetAllPasses {
+		  getAllPasses {
+			success
+			error
+			data {
+			  paid
+			  startDate
+			  endDate
+			  createdAt
+			  communityRental { address }
+			  userInfo { firstName lastName email }
+			  passInfo { name }
+			}
+		  }
+		}`,
+		operationName: "GetAllPasses"
+	  })
+	});
 
-    const passData = await passRes.json();
-    const passes   = passData?.data?.getAllPasses?.data ?? [];
+	const passData = await passRes.json();
+	const passes   = passData?.data?.getAllPasses?.data ?? [];
+
 
     // Filter: only paid passes (archive behavior)
     const filtered = passes.filter((p: any) => p.paid === true || p.paid === "true");
