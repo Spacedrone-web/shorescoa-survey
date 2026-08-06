@@ -92,7 +92,9 @@ export async function POST({ request, cookies, locals }: APIContext) {
 
     // Filter to active/confirmed/approved only
     const filtered = passes.filter((p: any) =>
-      ['active', 'confirmed', 'approved'].includes((p.status ?? '').toLowerCase())
+      (p.status ?? '').toLowerCase().includes('active') ||
+	  (p.status ?? '').toLowerCase().includes('confirmed') ||
+	  (p.status ?? '').toLowerCase().includes('approved')
     );
 
     // ── INSERT OR IGNORE — never overwrites email_sent ───────────
