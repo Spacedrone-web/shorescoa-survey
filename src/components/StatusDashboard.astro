@@ -1,6 +1,15 @@
 ---
-import StatusCard from "./StatusCard.astro";
 import DEDICATED from "../lib/dedicated.json";
+
+// ICONS
+const ICONS = {
+  parking: "🚗",
+  checkin: "📅",
+  studio: "🏢",
+  one: "1️⃣",
+  two: "2️⃣",
+  three: "3️⃣"
+};
 
 const env = (Astro.locals as any).runtime?.env ?? {};
 const DB = env.DB;
@@ -33,20 +42,14 @@ const ALLOWED = {
   "3 Bedroom": 2
 };
 
-// Rentals
+// Rentals (all active today)
 const currentRentals = await DB.prepare(`
   SELECT unit, arrival, departure, createdAt
   FROM guests
   WHERE arrival <= date('now') AND departure >= date('now')
 `).all();
 
-// Same-day
-const sameDay = await DB.prepare(`
-  SELECT unit, arrival, createdAt
-  FROM guests
-  WHERE arrival = date('now') AND substr(createdAt,1,10)=date('now')
-`).all();
-
+// Helper: parse unit → number + type
 function parseUnit(raw) {
   if (!raw) return { unitNum: null, type: null };
   const base = raw.split(" ")[0];
@@ -56,6 +59,7 @@ function parseUnit(raw) {
   return { unitNum, type: STACK_MAP[stack] ?? null };
 }
 
+// Count rentals by type + yellow usage
 const rentedByType = {
   "Studio": 0,
   "1 Bedroom": 0,
@@ -77,13 +81,29 @@ for (const row of currentRentals.results ?? []) {
   yellowUsed += Math.max(0, allowed - dedicated);
 }
 
-const sameDayCount = (sameDay.results ?? []).length;
-
+// SAME-DAY CHECK-IN LOGIC (corrected)
 const today = new Date().toISOString().slice(0,10);
-const totalToday = (currentRentals.results ?? []).filter(r => r.arrival === today).length;
 
+// All passes arriving today
+const arrivalsToday = (currentRentals.results ?? []).filter(r => {
+  const arrivalISO = new Date(r.arrival).toISOString().slice(0,10);
+  return arrivalISO === today;
+});
+
+// Total check-ins today
+const totalToday = arrivalsToday.length;
+
+// Same-day check-ins = arrival date matches created date
+const sameDayCount = arrivalsToday.filter(r => {
+  const arrivalISO = new Date(r.arrival).toISOString().slice(0,10);
+  const createdISO = new Date(r.createdAt).toISOString().slice(0,10);
+  return arrivalISO === createdISO;
+}).length;
+
+// Percent helper
 function pct(r, t) { return t ? (r / t) * 100 : 0; }
 
+// Percentages
 const studioPct = pct(rentedByType["Studio"], TOTAL["Studio"]);
 const onePct = pct(rentedByType["1 Bedroom"], TOTAL["1 Bedroom"]);
 const twoPct = pct(rentedByType["2 Bedroom"], TOTAL["2 Bedroom"]);
@@ -93,11 +113,67 @@ const sameDayPct = pct(sameDayCount, totalToday);
 
 // Status labels
 function statusLabel(p) {
-  if (p < 60) return "Low (Green)";
-  if (p < 85) return "Moderate (Yellow)";
-  return "High (Red)";
+  if (p < 60) return "Low";
+  if (p < 85) return "Moderate";
+  return "High";
+}
+
+// Status color
+function statusColor(p) {
+  if (p < 60) return "#22c55e"; // green
+  if (p < 85) return "#eab308"; // yellow
+  return "#ef4444"; // red
+}
+
+// Trend arrows (simple logic)
+function trendArrow(p) {
+  if (p < 60) return "⬆️";
+  if (p < 85) return "➡️";
+  return "⬇️";
+}
+
+// Mini sparkline (last 7 days)
+const last7 = await DB.prepare(`
+  SELECT arrival
+  FROM guests
+  WHERE arrival >= date('now','-7 days')
+    AND arrival <= date('now')
+`).all();
+
+function sparkline() {
+  const arr = Array(7).fill(0);
+  for (const r of last7.results ?? []) {
+    const idx = 6 - Math.floor((new Date(today) - new Date(r.arrival)) / 86400000);
+    if (idx >= 0 && idx < 7) arr[idx]++;
+  }
+  return arr.map(v => "▇".repeat(Math.min(v, 5)) || "▁").join(" ");
 }
 ---
+
+<style>
+  .card {
+    background:#1f2937;
+    border-radius:10px;
+    padding:16px;
+    color:#f9fafb;
+    box-shadow:0 2px 6px rgba(0,0,0,0.25);
+    transition:transform 0.15s ease;
+  }
+  .card:hover {
+    transform:translateY(-3px);
+  }
+  .bar {
+    height:8px;
+    border-radius:4px;
+    background:#374151;
+    overflow:hidden;
+    margin:8px 0;
+  }
+  .bar-fill {
+    height:100%;
+    border-radius:4px;
+  }
+</style>
 
 <div style="margin-top: 1.5rem;">
   <p style="margin-bottom: 1rem; color:#9ca3af;">
@@ -111,54 +187,84 @@ function statusLabel(p) {
       gap: 1.5rem;
     "
   >
-    <!-- TOP ROW -->
-    <StatusCard
-      label="Yellow Parking"
-      value={`${yellowUsed}/${yellowTotal}`}
-      percent={yellowPct}
-      status={statusLabel(yellowPct)}
-      note="Yellow spaces in use"
-    />
 
-    <StatusCard
-      label="Same-Day Check-ins"
-      value={`${sameDayCount}/${totalToday}`}
-      percent={sameDayPct}
-      status={statusLabel(sameDayPct)}
-      note="Today's ratio"
-    />
+    <!-- YELLOW PARKING -->
+    <div class="card">
+      <div style="font-size:20px; font-weight:700;">{ICONS.parking} Yellow Parking</div>
+      <div style="font-size:26px; font-weight:700;">{yellowUsed}/{yellowTotal}</div>
+      <div class="bar">
+        <div class="bar-fill" style="width:{yellowPct}%; background:{statusColor(yellowPct)};"></div>
+      </div>
+      <div>Usage: {yellowPct.toFixed(1)}%</div>
+      <div>Status: <span style="color:{statusColor(yellowPct)};">{statusLabel(yellowPct)}</span> {trendArrow(yellowPct)}</div>
+      <div style="color:#9ca3af; font-size:12px;">Yellow spaces in use</div>
+      <div style="margin-top:8px; font-size:12px;">7‑day trend: {sparkline()}</div>
+    </div>
 
-    <StatusCard
-      label="Studios"
-      value={`${rentedByType["Studio"]}/${TOTAL["Studio"]}`}
-      percent={studioPct}
-      status={statusLabel(studioPct)}
-      note="Rented / Available"
-    />
+    <!-- SAME-DAY CHECKINS -->
+    <div class="card">
+      <div style="font-size:20px; font-weight:700;">{ICONS.checkin} Same-Day Check-ins</div>
+      <div style="font-size:26px; font-weight:700;">{sameDayCount}/{totalToday}</div>
+      <div class="bar">
+        <div class="bar-fill" style="width:{sameDayPct}%; background:{statusColor(sameDayPct)};"></div>
+      </div>
+      <div>Ratio: {sameDayPct.toFixed(1)}%</div>
+      <div>Status: <span style="color:{statusColor(sameDayPct)};">{statusLabel(sameDayPct)}</span> {trendArrow(sameDayPct)}</div>
+      <div style="color:#9ca3af; font-size:12px;">Arrival date matches created date</div>
+      <div style="margin-top:8px; font-size:12px;">7‑day trend: {sparkline()}</div>
+    </div>
 
-    <!-- BOTTOM ROW -->
-    <StatusCard
-      label="1 Bedroom"
-      value={`${rentedByType["1 Bedroom"]}/${TOTAL["1 Bedroom"]}`}
-      percent={onePct}
-      status={statusLabel(onePct)}
-      note="Rented / Available"
-    />
+    <!-- STUDIOS -->
+    <div class="card">
+      <div style="font-size:20px; font-weight:700;">{ICONS.studio} Studios</div>
+      <div style="font-size:26px; font-weight:700;">{rentedByType["Studio"]}/{TOTAL["Studio"]}</div>
+      <div class="bar">
+        <div class="bar-fill" style="width:{studioPct}%; background:{statusColor(studioPct)};"></div>
+      </div>
+      <div>Occupancy: {studioPct.toFixed(1)}%</div>
+      <div>Status: <span style="color:{statusColor(studioPct)};">{statusLabel(studioPct)}</span> {trendArrow(studioPct)}</div>
+      <div style="color:#9ca3af; font-size:12px;">Rented / Available</div>
+      <div style="margin-top:8px; font-size:12px;">7‑day trend: {sparkline()}</div>
+    </div>
 
-    <StatusCard
-      label="2 Bedroom"
-      value={`${rentedByType["2 Bedroom"]}/${TOTAL["2 Bedroom"]}`}
-      percent={twoPct}
-      status={statusLabel(twoPct)}
-      note="Rented / Available"
-    />
+    <!-- 1 BEDROOM -->
+    <div class="card">
+      <div style="font-size:20px; font-weight:700;">{ICONS.one} 1 Bedroom</div>
+      <div style="font-size:26px; font-weight:700;">{rentedByType["1 Bedroom"]}/{TOTAL["1 Bedroom"]}</div>
+      <div class="bar">
+        <div class="bar-fill" style="width:{onePct}%; background:{statusColor(onePct)};"></div>
+      </div>
+      <div>Occupancy: {onePct.toFixed(1)}%</div>
+      <div>Status: <span style="color:{statusColor(onePct)};">{statusLabel(onePct)}</span> {trendArrow(onePct)}</div>
+      <div style="color:#9ca3af; font-size:12px;">Rented / Available</div>
+      <div style="margin-top:8px; font-size:12px;">7‑day trend: {sparkline()}</div>
+    </div>
 
-    <StatusCard
-      label="3 Bedroom"
-      value={`${rentedByType["3 Bedroom"]}/${TOTAL["3 Bedroom"]}`}
-      percent={threePct}
-      status={statusLabel(threePct)}
-      note="Rented / Available"
-    />
+    <!-- 2 BEDROOM -->
+    <div class="card">
+      <div style="font-size:20px; font-weight:700;">{ICONS.two} 2 Bedroom</div>
+      <div style="font-size:26px; font-weight:700;">{rentedByType["2 Bedroom"]}/{TOTAL["2 Bedroom"]}</div>
+      <div class="bar">
+        <div class="bar-fill" style="width:{twoPct}%; background:{statusColor(twoPct)};"></div>
+      </div>
+      <div>Occupancy: {twoPct.toFixed(1)}%</div>
+      <div>Status: <span style="color:{statusColor(twoPct)};">{statusLabel(twoPct)}</span> {trendArrow(twoPct)}</div>
+      <div style="color:#9ca3af; font-size:12px;">Rented / Available</div>
+      <div style="margin-top:8px; font-size:12px;">7‑day trend: {sparkline()}</div>
+    </div>
+
+    <!-- 3 BEDROOM -->
+    <div class="card">
+      <div style="font-size:20px; font-weight:700;">{ICONS.three} 3 Bedroom</div>
+      <div style="font-size:26px; font-weight:700;">{rentedByType["3 Bedroom"]}/{TOTAL["3 Bedroom"]}</div>
+      <div class="bar">
+        <div class="bar-fill" style="width:{threePct}%; background:{statusColor(threePct)};"></div>
+      </div>
+      <div>Occupancy: {threePct.toFixed(1)}%</div>
+      <div>Status: <span style="color:{statusColor(threePct)};">{statusLabel(threePct)}</span> {trendArrow(threePct)}</div>
+      <div style="color:#9ca3af; font-size:12px;">Rented / Available</div>
+      <div style="margin-top:8px; font-size:12px;">7‑day trend: {sparkline()}</div>
+    </div>
+
   </div>
 </div>
