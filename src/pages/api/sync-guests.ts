@@ -271,10 +271,11 @@ export async function POST({ request, cookies, locals }: APIContext) {
 			const mm = months[mon];
 			const yyyy = "20" + yy;
 
+			// Normalize to ISO local midnight
 			return `${yyyy}-${mm}-${d.padStart(2, "0")}T00:00:00`;
 		  }
 
-		  // Fallback for ISO
+		  // Fallback for ISO-like values
 		  const iso = raw.replace("Z", "");
 		  return iso.slice(0, 19);
 		})();
