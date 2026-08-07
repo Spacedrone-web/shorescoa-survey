@@ -1,4 +1,4 @@
-export const prerender = false;
+﻿export const prerender = false;
 import type { APIContext } from "astro";
 
 const GQL  = "https://8ftizrpawz.us-east-2.awsapprunner.com/graphql";
@@ -216,3 +216,4 @@ export async function POST({ request, cookies, locals }: APIContext) {
     return json({ ok: false, error: String(err?.message ?? err) }, 500);
   }
 }
+
