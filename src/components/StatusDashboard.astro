@@ -141,7 +141,7 @@ const rentedByType: Record<string, number> = {
 };
 
 let yellowUsed = 0;
-let yellowTotal = 0;
+const yellowTotal = 274;
 
 // Precompute total possible yellow spots across all units
 for (const [unitStr, dedicated] of Object.entries(DEDICATED)) {
@@ -188,7 +188,10 @@ const twoPct = pct(twoRented, TOTAL["2 Bedroom"]);
 const threePct = pct(threeRented, TOTAL["3 Bedroom"]);
 
 const yellowPct = pct(yellowUsed, yellowTotal);
-const sameDayPct = sameDayCount; // you can later normalize if you want
+const today = new Date().toISOString().slice(0,10);
+const totalToday = (currentRentals.results ?? []).filter(r => r.arrival === today).length;
+const sameDayPct = totalToday ? (sameDayCount / totalToday) * 100 : 0;
+
 ---
 
 <div style="margin-top: 1.5rem;">

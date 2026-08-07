@@ -4,14 +4,13 @@ const {
   value,
   max,
   percent,
-  color,
   subtitle
 } = Astro.props;
 
 // Clamp percent
 const pct = Math.max(0, Math.min(100, percent ?? 0));
 
-// Map percent to angle (semi-circle: -90° to +90°)
+// Needle math (semi-circle: -90° to +90°)
 const angle = -90 + (pct / 100) * 180;
 const radius = 80;
 const cx = 100;
@@ -20,29 +19,45 @@ const rad = (angle * Math.PI) / 180;
 const needleX = cx + radius * Math.cos(rad);
 const needleY = cy + radius * Math.sin(rad);
 
-let strokeColor = "#22c55e";
-if (pct > 90) strokeColor = "#ef4444";
-else if (pct > 75) strokeColor = "#eab308";
+// Arc lengths for segmentation
+// Full semi-circle ≈ 188 units (we use 188 for 75%, 47 for 15%, 47 for 15%)
+const GREEN_LEN = 188;  // 0–75%
+const YELLOW_LEN = 47;  // 76–90%
+const RED_LEN = 47;     // 91–100%
 ---
 
 <svg viewBox="0 0 200 140" style="width: 100%; max-width: 260px;">
-  <!-- Background arc (grey) -->
+
+  <!-- GREEN zone (0–75%) -->
   <path
     d="M20 110 A80 80 0 0 1 180 110"
     fill="none"
-    stroke="#1f2937"
+    stroke="#22c55e"
     stroke-width="16"
     stroke-linecap="round"
+    stroke-dasharray={`${GREEN_LEN} 1000`}
   />
 
-  <!-- Colored arc -->
+  <!-- YELLOW zone (76–90%) -->
   <path
     d="M20 110 A80 80 0 0 1 180 110"
     fill="none"
-    stroke={strokeColor}
+    stroke="#eab308"
     stroke-width="16"
     stroke-linecap="round"
-    stroke-dasharray={`${pct * 2.51} 1000`}
+    stroke-dasharray={`${YELLOW_LEN} 1000`}
+    stroke-dashoffset={`-${GREEN_LEN}`}
+  />
+
+  <!-- RED zone (91–100%) -->
+  <path
+    d="M20 110 A80 80 0 0 1 180 110"
+    fill="none"
+    stroke="#ef4444"
+    stroke-width="16"
+    stroke-linecap="round"
+    stroke-dasharray={`${RED_LEN} 1000`}
+    stroke-dashoffset={`-${GREEN_LEN + YELLOW_LEN}`}
   />
 
   <!-- Needle -->
