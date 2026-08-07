@@ -88,15 +88,12 @@ async function gqlSafe(
           `[Symliv] FATAL: All ${MAX_RETRIES} attempts failed. Entering fallback mode.`
         );
 
-        // -----------------------------
-        // ⭐ FALLBACK MODE
-        // -----------------------------
         return {
           data: {
             getAllPasses: {
               success: true,
               error: null,
-              data: [], // empty dataset fallback
+              data: [],
             },
           },
           fallback: true,
@@ -105,7 +102,6 @@ async function gqlSafe(
         };
       }
 
-      // Exponential backoff
       await new Promise((res) => setTimeout(res, attempt * 500));
     }
   }
@@ -154,7 +150,7 @@ async function loginUser(
 }
 
 // ---------------------------------------------------------
-// Fetch passes (with fallback logging)
+// Fetch passes
 // ---------------------------------------------------------
 async function fetchPasses(userToken: string): Promise<any[]> {
   const r = await gqlSafe(
@@ -192,7 +188,7 @@ async function fetchPasses(userToken: string): Promise<any[]> {
 }
 
 // ---------------------------------------------------------
-// Main sync endpoint (Balanced Mode + Logging)
+// Main sync endpoint
 // ---------------------------------------------------------
 export async function POST({ request, cookies, locals }: APIContext) {
   const json = (obj: any, status = 200) =>
@@ -218,7 +214,6 @@ export async function POST({ request, cookies, locals }: APIContext) {
   }
 
   try {
-    // Step 1: Tokens
     const communityToken = await getCommunityToken();
     const userToken = await loginUser(
       env.SYMLIV_EMAIL ?? "jim@shorescoa.com",
@@ -226,10 +221,8 @@ export async function POST({ request, cookies, locals }: APIContext) {
       communityToken
     );
 
-    // Step 2: Fetch passes
     const passes = await fetchPasses(userToken);
 
-    // Step 3: Filter passes
     const filtered = passes.filter((p: any) => {
       const name = (p.passInfo?.name ?? "").toLowerCase();
       const paid = (p.paid ?? "").toLowerCase();
@@ -240,9 +233,6 @@ export async function POST({ request, cookies, locals }: APIContext) {
       );
     });
 
-    // ---------------------------------------------------------
-    // Balanced Mode: Chunked processing
-    // ---------------------------------------------------------
     const CHUNK = 25;
     let inserted = 0;
     let skipped = 0;
@@ -262,15 +252,18 @@ export async function POST({ request, cookies, locals }: APIContext) {
         const dep = (p.endDate ?? "").slice(0, 10);
         const unit = p.communityRental?.address ?? "";
 
-		const createdAt = (() => {
-		  const raw = p.createdAt ?? "";
-		  if (!raw) return new Date().toISOString().slice(0, 19);
+        // ⭐ Correct timezone normalization (UTC → local CST/CDT)
+        const createdAt = (() => {
+          const raw = p.createdAt ?? "";
+          const iso = raw ? raw.replace("Z", "") : new Date().toISOString();
 
-		  // Normalize Symliv format: 2026-07-25T07:08:53.242Z
-		  // → 2026-07-25T07:08:53
-		  return raw.replace("Z", "").slice(0, 19);
-		})();
+          const dt = new Date(iso);
+          const local = new Date(
+            dt.getTime() - dt.getTimezoneOffset() * 60000
+          );
 
+          return local.toISOString().slice(0, 19);
+        })();
 
         if (!email || !arr) {
           skipped++;
