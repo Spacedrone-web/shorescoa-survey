@@ -1,4 +1,4 @@
-﻿export const prerender = false;
+export const prerender = false;
 import type { APIContext } from "astro";
 
 const GQL  = "https://8ftizrpawz.us-east-2.awsapprunner.com/graphql";
@@ -180,12 +180,20 @@ export async function POST({ request, cookies, locals }: APIContext) {
       }
 
       try {
-        await DB.prepare(
-          `INSERT INTO guests (guest_name, email, arrival, departure, unit, createdAt)
-           VALUES (?, ?, ?, ?, ?, ?)`
-        )
-        .bind(name, email, arr, dep, unit, createdAt)
-        .run();
+		await DB.prepare(
+		  `INSERT INTO guests (guest_name, email, arrival, departure, unit, createdAt)
+		   VALUES (?, ?, ?, ?, ?, ?)
+		   ON CONFLICT(email) DO UPDATE SET
+			 guest_name = excluded.guest_name,
+			 arrival    = excluded.arrival,
+			 departure  = excluded.departure,
+			 unit       = excluded.unit,
+			 createdAt  = excluded.createdAt,
+			 synced_at  = datetime('now')`
+		)
+		.bind(name, email, arr, dep, unit, createdAt)
+		.run();
+
 
         inserted++;
       } catch (err: any) {
