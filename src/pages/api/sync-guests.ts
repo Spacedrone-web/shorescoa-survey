@@ -14,10 +14,12 @@ const HDR: Record<string, string> = {
 };
 
 // ---------------------------------------------------------
-// DATE NORMALIZER (FINAL FIX)
+// DATE NORMALIZER — ALWAYS RETURNS YYYY-MM-DD
 // ---------------------------------------------------------
-function normalizeDate(raw: string): string {
-  if (!raw) return "";
+function normalizeDate(raw: string | undefined | null): string {
+  if (!raw) {
+    return new Date().toISOString().split("T")[0];
+  }
 
   // Case 1: Symliv UI format "6-Aug-26"
   const symlivPattern = /^(\d{1,2})-(\w{3})-(\d{2})$/;
@@ -37,18 +39,16 @@ function normalizeDate(raw: string): string {
   }
 
   // Case 2: ISO timestamp "2026-08-05T12:33:47.277Z"
-  const dt = new Date(raw);
-  if (!isNaN(dt.getTime())) {
-    const local = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000);
-    return local.toISOString().slice(0, 10);
+  if (raw.includes("T")) {
+    return raw.split("T")[0];
   }
 
-  // Case 3: Already normalized
+  // Case 3: Already normalized YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
     return raw;
   }
 
-  return "";
+  return new Date().toISOString().split("T")[0];
 }
 
 // ---------------------------------------------------------
@@ -66,13 +66,8 @@ async function gqlSafe(
   const TIMEOUT_MS = 8000;
 
   let lastError: any = null;
-  let attempts = 0;
-
-  const startTime = Date.now();
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    attempts++;
-
     const ctrl = new AbortController();
     const timeout = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
 
@@ -116,7 +111,7 @@ async function gqlSafe(
             },
           },
           fallback: true,
-          attempts,
+          attempts: attempt,
           lastError: String(lastError?.message ?? lastError),
         };
       }
@@ -241,8 +236,8 @@ export async function POST({ request, cookies, locals }: APIContext) {
 
     const CHUNK = 25;
     let inserted = 0;
-    let skipped = 0;
     let updated = 0;
+    let skipped = 0;
     let chunks = 0;
 
     for (let i = 0; i < filtered.length; i += CHUNK) {
