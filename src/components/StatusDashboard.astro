@@ -109,9 +109,32 @@ const yellowPct = pct(yellowUsed, yellowTotal);
 ---
 
 <div style="margin-top: 1.5rem;">
-  <p style="margin-bottom: 1rem; color:#9ca3af;">
-    Status as of {new Date().toLocaleString("en-US", { timeZone: "America/Denver" })}
-  </p>
+
+  <!-- Last updated badge -->
+  <div style="
+    background:#1f2937;
+    color:#f9fafb;
+    padding:6px 12px;
+    border-radius:6px;
+    display:inline-block;
+    margin-bottom:1rem;
+    font-size:13px;
+  ">
+    Last updated: {new Date().toLocaleString("en-US", { timeZone: "America/Denver" })}
+  </div>
+
+  <!-- Legend -->
+  <div style="
+    display:flex;
+    gap:1rem;
+    margin-bottom:1rem;
+    color:#e5e7eb;
+    font-size:13px;
+  ">
+    <div><span style="color:#22c55e;">●</span> 0–60%</div>
+    <div><span style="color:#eab308;">●</span> 61–85%</div>
+    <div><span style="color:#ef4444;">●</span> 86–100%</div>
+  </div>
 
   <div
     style="
