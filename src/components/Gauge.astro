@@ -36,9 +36,6 @@ const ALLOWED: Record<string, number> = {
   "3 Bedroom": 2
 };
 
-// Dedicated spots table (truncated here for brevity)
-import DEDICATED from "../data/dedicated.json";
-
 // Fetch current rentals
 const currentRentals = await DB.prepare(
   `SELECT guest_name, email, unit, arrival, departure, createdAt
