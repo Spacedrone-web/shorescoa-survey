@@ -164,7 +164,7 @@ const today = new Date().toISOString().slice(0,10);
 const totalToday = (currentRentals.results ?? []).filter(r => r.arrival === today).length;
 const sameDayPct = totalToday ? (sameDayCount / totalToday) * 100 : 0;
 
-// Bedroom percentages
+// Bedroom percentages (fullness)
 function pct(rented: number, total: number): number {
   return total ? (rented / total) * 100 : 0;
 }
@@ -197,14 +197,4 @@ const yellowPct = pct(yellowUsed, yellowTotal);
     />
 
     <Gauge
-      label="Same-Day Check-ins"
-      value={`${sameDayCount}`}
-      max={100}
-      percent={sameDayPct}
-      subtitle="Today"
-    />
-
-    <Gauge
-      label="Studios"
-      value={`${rentedByType["Studio"]}/${TOTAL["Studio"]}`}
-      max={TOTAL["Studio"]}
+      label
