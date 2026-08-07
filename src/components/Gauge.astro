@@ -1,164 +1,110 @@
 ---
-import Gauge from "./Gauge.astro";
+const {
+  label,
+  value,
+  percent,
+  subtitle
+} = Astro.props;
 
-const env = (Astro.locals as any).runtime?.env ?? {};
-const DB = env.DB;
+// Clamp percent
+const pct = Math.max(0, Math.min(100, percent ?? 0));
 
-if (!DB) {
-  throw new Error("DB binding not available in StatusDashboard");
-}
+// Needle math (semi-circle: -90° to +90°)
+const angle = -90 + (pct / 100) * 180;
+const radius = 80;
+const cx = 100;
+const cy = 110;
+const rad = (angle * Math.PI) / 180;
+const needleX = cx + radius * Math.cos(rad);
+const needleY = cy + radius * Math.sin(rad);
 
-// Stack → type
-const STACK_MAP: Record<string, string> = {
-  "01": "3 Bedroom", "02": "1 Bedroom", "03": "2 Bedroom", "04": "2 Bedroom",
-  "05": "Studio",    "06": "Studio",    "07": "2 Bedroom", "08": "1 Bedroom",
-  "09": "1 Bedroom", "10": "2 Bedroom", "11": "1 Bedroom", "12": "1 Bedroom",
-  "13": "1 Bedroom", "14": "1 Bedroom", "15": "1 Bedroom", "16": "1 Bedroom",
-  "17": "1 Bedroom", "18": "2 Bedroom", "19": "2 Bedroom", "20": "2 Bedroom",
-  "21": "2 Bedroom", "22": "2 Bedroom", "23": "2 Bedroom", "24": "2 Bedroom",
-  "25": "1 Bedroom", "26": "1 Bedroom", "27": "1 Bedroom", "28": "3 Bedroom",
-  "29": "2 Bedroom", "30": "1 Bedroom", "31": "3 Bedroom"
-};
-
-// Total units by type
-const TOTAL: Record<string, number> = {
-  "Studio": 41,
-  "1 Bedroom": 292,
-  "2 Bedroom": 231,
-  "3 Bedroom": 61
-};
-
-// Allowed spots by type
-const ALLOWED: Record<string, number> = {
-  "Studio": 1,
-  "1 Bedroom": 1,
-  "2 Bedroom": 2,
-  "3 Bedroom": 2
-};
-
-// Fetch current rentals
-const currentRentals = await DB.prepare(
-  `SELECT guest_name, email, unit, arrival, departure, createdAt
-   FROM guests
-   WHERE arrival <= date('now')
-     AND departure >= date('now')`
-).all();
-
-// Same-day check-ins today
-const sameDay = await DB.prepare(
-  `SELECT guest_name, email, unit, arrival, createdAt
-   FROM guests
-   WHERE arrival = date('now')
-     AND substr(createdAt, 1, 10) = date('now')`
-).all();
-
-// Helper: get unit number and stack/type
-function parseUnit(raw: string | null): { unitNum: number | null; type: string | null } {
-  if (!raw) return { unitNum: null, type: null };
-  const base = raw.split(" ")[0];
-  const unitNum = parseInt(base, 10);
-  if (Number.isNaN(unitNum)) return { unitNum: null, type: null };
-  const stack = base.slice(-2).padStart(2, "0");
-  const type = STACK_MAP[stack] ?? null;
-  return { unitNum, type };
-}
-
-// Count rentals by type
-const rentedByType: Record<string, number> = {
-  "Studio": 0,
-  "1 Bedroom": 0,
-  "2 Bedroom": 0,
-  "3 Bedroom": 0
-};
-
-let yellowUsed = 0;
-const yellowTotal = 274;
-
-// For current rentals: count type + yellow used
-for (const row of currentRentals.results ?? []) {
-  const { unitNum, type } = parseUnit(row.unit as string | null);
-  if (!type || !unitNum) continue;
-
-  rentedByType[type]++;
-
-  const dedicated = DEDICATED[unitNum] ?? 0;
-  const allowed = ALLOWED[type];
-  const yellow = Math.max(0, allowed - dedicated);
-  yellowUsed += yellow;
-}
-
-// Same-day check-ins count
-const sameDayCount = (sameDay.results ?? []).length;
-
-// Same-day percentage
-const today = new Date().toISOString().slice(0,10);
-const totalToday = (currentRentals.results ?? []).filter(r => r.arrival === today).length;
-const sameDayPct = totalToday ? (sameDayCount / totalToday) * 100 : 0;
-
-// Bedroom percentages (fullness)
-function pct(rented: number, total: number): number {
-  return total ? (rented / total) * 100 : 0;
-}
-
-const studioPct = pct(rentedByType["Studio"], TOTAL["Studio"]);
-const onePct = pct(rentedByType["1 Bedroom"], TOTAL["1 Bedroom"]);
-const twoPct = pct(rentedByType["2 Bedroom"], TOTAL["2 Bedroom"]);
-const threePct = pct(rentedByType["3 Bedroom"], TOTAL["3 Bedroom"]);
-const yellowPct = pct(yellowUsed, yellowTotal);
+// Arc segmentation (60% green, 25% yellow, 15% red)
+const FULL_ARC = 188; // semi-circle length
+const GREEN_LEN = FULL_ARC * 0.60;
+const YELLOW_LEN = FULL_ARC * 0.25;
+const RED_LEN = FULL_ARC * 0.15;
 ---
 
-<div style="margin-top: 1.5rem;">
-  <p style="margin-bottom: 1rem; color:#9ca3af;">
-    Status as of {new Date().toLocaleString("en-US", { timeZone: "America/Denver" })}
-  </p>
+<svg viewBox="0 0 200 140" style="width: 100%; max-width: 260px;">
 
-  <div
-    style="
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 1.5rem;
-    "
+  <!-- GREEN zone -->
+  <path
+    d="M20 110 A80 80 0 0 1 180 110"
+    fill="none"
+    stroke="#22c55e"
+    stroke-width="16"
+    stroke-linecap="round"
+    stroke-dasharray={`${GREEN_LEN} 1000`}
+  />
+
+  <!-- YELLOW zone -->
+  <path
+    d="M20 110 A80 80 0 0 1 180 110"
+    fill="none"
+    stroke="#eab308"
+    stroke-width="16"
+    stroke-linecap="round"
+    stroke-dasharray={`${YELLOW_LEN} 1000`}
+    stroke-dashoffset={`-${GREEN_LEN}`}
+  />
+
+  <!-- RED zone -->
+  <path
+    d="M20 110 A80 80 0 0 1 180 110"
+    fill="none"
+    stroke="#ef4444"
+    stroke-width="16"
+    stroke-linecap="round"
+    stroke-dasharray={`${RED_LEN} 1000`}
+    stroke-dashoffset={`-${GREEN_LEN + YELLOW_LEN}`}
+  />
+
+  <!-- Needle -->
+  <line
+    x1={cx}
+    y1={cy}
+    x2={needleX}
+    y2={needleY}
+    stroke="#f9fafb"
+    stroke-width="3"
+    stroke-linecap="round"
+  />
+  <circle cx={cx} cy={cy} r="4" fill="#f9fafb" />
+
+  <!-- Label -->
+  <text
+    x="100"
+    y="30"
+    text-anchor="middle"
+    fill="#e5e7eb"
+    font-size="14"
+    font-weight="600"
   >
-    <Gauge
-      label="Yellow Parking"
-      value={`${yellowUsed}/${yellowTotal}`}
-      percent={yellowPct}
-      subtitle="Yellow spaces in use"
-    />
+    {label}
+  </text>
 
-    <Gauge
-      label="Same-Day Check-ins"
-      value={`${sameDayCount}`}
-      percent={sameDayPct}
-      subtitle="Today"
-    />
+  <!-- Center value -->
+  <text
+    x="100"
+    y="105"
+    text-anchor="middle"
+    fill="#e5e7eb"
+    font-size="16"
+    font-weight="600"
+  >
+    {value}
+  </text>
 
-    <Gauge
-      label="Studios"
-      value={`${rentedByType["Studio"]}/${TOTAL["Studio"]}`}
-      percent={studioPct}
-      subtitle="Rented / Available"
-    />
-
-    <Gauge
-      label="1 Bedroom"
-      value={`${rentedByType["1 Bedroom"]}/${TOTAL["1 Bedroom"]}`}
-      percent={onePct}
-      subtitle="Rented / Available"
-    />
-
-    <Gauge
-      label="2 Bedroom"
-      value={`${rentedByType["2 Bedroom"]}/${TOTAL["2 Bedroom"]}`}
-      percent={twoPct}
-      subtitle="Rented / Available"
-    />
-
-    <Gauge
-      label="3 Bedroom"
-      value={`${rentedByType["3 Bedroom"]}/${TOTAL["3 Bedroom"]}`}
-      percent={threePct}
-      subtitle="Rented / Available"
-    />
-  </div>
-</div>
+  <!-- Subtitle -->
+  {subtitle && (
+    <text
+      x="100"
+      y="122"
+      text-anchor="middle"
+      fill="#9ca3af"
+      font-size="12"
+    >
+      {subtitle}
+    </text>
+  )}
+</svg>
