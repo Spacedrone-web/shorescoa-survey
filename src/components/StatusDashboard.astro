@@ -1,4 +1,3 @@
----
 import StatusCard from "./StatusCard.astro";
 import DEDICATED from "../lib/dedicated.json";
 
@@ -37,7 +36,7 @@ const ALLOWED = {
 const currentRentals = await DB.prepare(`
   SELECT unit, arrival, departure, createdAt
   FROM guests
-  WHERE arrival <= date('now') AND departure >= date('now')
+  WHERE arrival <= date('now') AND departure > date('now')
 `).all();
 
 // Helper: parse unit → number + type
@@ -72,27 +71,31 @@ for (const row of currentRentals.results ?? []) {
   yellowUsed += Math.max(0, allowed - dedicated);
 }
 
-// SAME-DAY CHECK-IN LOGIC (Symliv rule)
-function iso(d) {
-  return new Date(d).toISOString().slice(0,10);
-}
-
+// DATE HELPERS
 const today = new Date().toISOString().slice(0,10);
 
-// All passes arriving today
-const arrivalsToday = (currentRentals.results ?? []).filter(r => iso(r.arrival) === today);
+// Tomorrow (YYYY-MM-DD)
+const tomorrow = (() => {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0,10);
+})();
 
-// Same-day check-ins = arrival date matches created date
-const sameDay = arrivalsToday.filter(r => iso(r.arrival) === iso(r.createdAt));
+// SAME-DAY CHECK-IN LOGIC
+const arrivalsToday = (currentRentals.results ?? []).filter(r => r.arrival === today);
+const sameDay = arrivalsToday.filter(r => r.arrival === r.createdAt);
 
-// Counts
 const sameDayCount = sameDay.length;
 const totalTodayCount = arrivalsToday.length;
+const sameDayPct = totalTodayCount ? (sameDayCount / totalTodayCount) * 100 : 0;
 
-// Percentage
-const sameDayPct = totalTodayCount
-  ? (sameDayCount / totalTodayCount) * 100
-  : 0;
+// DEPARTING TODAY
+const departingToday = (currentRentals.results ?? []).filter(r => r.departure === today);
+const departingTodayCount = departingToday.length;
+
+// ARRIVING TOMORROW
+const arrivingTomorrow = (currentRentals.results ?? []).filter(r => r.arrival === tomorrow);
+const arrivingTomorrowCount = arrivingTomorrow.length;
 
 // Percent helper
 function pct(r, t) { return t ? (r / t) * 100 : 0; }
@@ -142,14 +145,22 @@ function statusLabel(p) {
     />
 
     <StatusCard
-      label="Studios"
-      value={`${rentedByType["Studio"]}/${TOTAL["Studio"]}`}
-      percent={studioPct}
-      status={statusLabel(studioPct)}
-      note="Rented / Available"
+      label="Departing Today"
+      value={`${departingTodayCount}`}
+      percent={0}
+      status="Info"
+      note="Guests leaving today"
     />
 
     <!-- BOTTOM ROW -->
+    <StatusCard
+      label="Arriving Tomorrow"
+      value={`${arrivingTomorrowCount}`}
+      percent={0}
+      status="Info"
+      note="Forecast arrivals"
+    />
+
     <StatusCard
       label="1 Bedroom"
       value={`${rentedByType["1 Bedroom"]}/${TOTAL["1 Bedroom"]}`}
