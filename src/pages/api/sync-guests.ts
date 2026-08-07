@@ -262,7 +262,7 @@ export async function POST({ request, cookies, locals }: APIContext) {
 		  // Convert UTC → local CST/CDT automatically
 		  const local = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000);
 
-		  return local.toISOString().slice(0, 19);
+		  return local.toISOString().slice(0, 10); // <-- KEY CHANGE
 		})();
 
         if (!email || !arr) {
