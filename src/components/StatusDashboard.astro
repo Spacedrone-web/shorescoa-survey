@@ -1,5 +1,5 @@
 ---
-import Gauge from "./Gauge.astro";
+import StatusCard from "./StatusCard.astro";
 import DEDICATED from "../lib/dedicated.json";
 
 const env = (Astro.locals as any).runtime?.env ?? {};
@@ -90,6 +90,13 @@ const twoPct = pct(rentedByType["2 Bedroom"], TOTAL["2 Bedroom"]);
 const threePct = pct(rentedByType["3 Bedroom"], TOTAL["3 Bedroom"]);
 const yellowPct = pct(yellowUsed, yellowTotal);
 const sameDayPct = pct(sameDayCount, totalToday);
+
+// Status labels
+function statusLabel(p) {
+  if (p < 60) return "Low (Green)";
+  if (p < 85) return "Moderate (Yellow)";
+  return "High (Red)";
+}
 ---
 
 <div style="margin-top: 1.5rem;">
@@ -105,47 +112,53 @@ const sameDayPct = pct(sameDayCount, totalToday);
     "
   >
     <!-- TOP ROW -->
-    <Gauge
+    <StatusCard
       label="Yellow Parking"
       value={`${yellowUsed}/${yellowTotal}`}
       percent={yellowPct}
-      subtitle="Yellow spaces in use"
+      status={statusLabel(yellowPct)}
+      note="Yellow spaces in use"
     />
 
-    <Gauge
+    <StatusCard
       label="Same-Day Check-ins"
       value={`${sameDayCount}/${totalToday}`}
       percent={sameDayPct}
-      subtitle="Today"
+      status={statusLabel(sameDayPct)}
+      note="Today's ratio"
     />
 
-    <Gauge
+    <StatusCard
       label="Studios"
       value={`${rentedByType["Studio"]}/${TOTAL["Studio"]}`}
       percent={studioPct}
-      subtitle="Rented / Available"
+      status={statusLabel(studioPct)}
+      note="Rented / Available"
     />
 
     <!-- BOTTOM ROW -->
-    <Gauge
+    <StatusCard
       label="1 Bedroom"
       value={`${rentedByType["1 Bedroom"]}/${TOTAL["1 Bedroom"]}`}
       percent={onePct}
-      subtitle="Rented / Available"
+      status={statusLabel(onePct)}
+      note="Rented / Available"
     />
 
-    <Gauge
+    <StatusCard
       label="2 Bedroom"
       value={`${rentedByType["2 Bedroom"]}/${TOTAL["2 Bedroom"]}`}
       percent={twoPct}
-      subtitle="Rented / Available"
+      status={statusLabel(twoPct)}
+      note="Rented / Available"
     />
 
-    <Gauge
+    <StatusCard
       label="3 Bedroom"
       value={`${rentedByType["3 Bedroom"]}/${TOTAL["3 Bedroom"]}`}
       percent={threePct}
-      subtitle="Rented / Available"
+      status={statusLabel(threePct)}
+      note="Rented / Available"
     />
   </div>
 </div>

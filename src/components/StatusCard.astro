@@ -1,0 +1,40 @@
+---
+const { label, value, percent, status, note } = Astro.props;
+
+// Status color
+let color = "#22c55e"; // green
+if (percent >= 60 && percent < 85) color = "#eab308"; // yellow
+if (percent >= 85) color = "#ef4444"; // red
+---
+
+<div
+  style="
+    background:#1f2937;
+    border-radius:10px;
+    padding:16px;
+    color:#f9fafb;
+    box-shadow:0 2px 6px rgba(0,0,0,0.25);
+  "
+>
+  <div style="font-size:16px; font-weight:600; margin-bottom:6px;">
+    {label}
+  </div>
+
+  <div style="font-size:26px; font-weight:700; margin-bottom:4px;">
+    {value}
+  </div>
+
+  <div style="font-size:14px; margin-bottom:6px;">
+    Usage: {percent.toFixed(1)}%
+  </div>
+
+  <div style="font-size:14px; font-weight:600; color:${color}; margin-bottom:6px;">
+    Status: {status}
+  </div>
+
+  {note && (
+    <div style="font-size:12px; color:#9ca3af;">
+      {note}
+    </div>
+  )}
+</div>
