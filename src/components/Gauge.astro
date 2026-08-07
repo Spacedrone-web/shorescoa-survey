@@ -18,57 +18,18 @@ const rad = (angle * Math.PI) / 180;
 const needleX = cx + radius * Math.cos(rad);
 const needleY = cy + radius * Math.sin(rad);
 
-// Correct arc length for radius 80
-const FULL_ARC = Math.PI * 80; // ≈ 251.3
-
-// Segmentation (60% green, 25% yellow, 15% red)
-const GREEN_LEN = FULL_ARC * 0.60;
-const YELLOW_LEN = FULL_ARC * 0.25;
-const RED_LEN = FULL_ARC * 0.15;
-
-// Tooltip text
-const tooltip = `${percent.toFixed(1)}%`;
+// Use a normalized arc length of 100 units for clean segmentation
+const FULL_ARC = 100;
+const GREEN_LEN = FULL_ARC * 0.60; // 0–60%
+const YELLOW_LEN = FULL_ARC * 0.25; // 61–85%
+const RED_LEN = FULL_ARC * 0.15; // 86–100%
 ---
 
-<style>
-  .gauge-container:hover .gauge-tooltip {
-    opacity: 1;
-    transform: translate(-50%, -10px);
-  }
-
-  .needle {
-    transition: x2 0.8s ease-out, y2 0.8s ease-out;
-  }
-</style>
-
-<div class="gauge-container" style="position: relative; text-align:center;">
-
-  <!-- Tooltip -->
-  <div
-    class="gauge-tooltip"
-    style="
-      position:absolute;
-      top:-10px;
-      left:50%;
-      transform:translateX(-50%);
-      background:#1f2937;
-      color:#f9fafb;
-      padding:4px 8px;
-      border-radius:4px;
-      font-size:12px;
-      opacity:0;
-      transition:all 0.25s ease;
-      pointer-events:none;
-    "
-  >
-    {tooltip}
-  </div>
+<div style="text-align:center;">
 
   <!-- Label ABOVE gauge -->
-  <div style="margin-bottom: 0.25rem;">
-    <div style="color:#e5e7eb; font-size:14px; font-weight:600;">
-      {label}
-    </div>
+  <div style="margin-bottom: 0.25rem; color:#e5e7eb; font-size:14px; font-weight:600;">
+    {label}
   </div>
 
   <svg viewBox="0 0 200 140" style="width: 100%; max-width: 260px;">
@@ -80,7 +41,7 @@ const tooltip = `${percent.toFixed(1)}%`;
       stroke="#22c55e"
       stroke-width="16"
       stroke-linecap="round"
-      stroke-dasharray={`${GREEN_LEN} 1000`}
+      stroke-dasharray={`${GREEN_LEN} ${FULL_ARC}`}
     />
 
     <!-- YELLOW zone -->
@@ -90,7 +51,7 @@ const tooltip = `${percent.toFixed(1)}%`;
       stroke="#eab308"
       stroke-width="16"
       stroke-linecap="round"
-      stroke-dasharray={`${YELLOW_LEN} 1000`}
+      stroke-dasharray={`${YELLOW_LEN} ${FULL_ARC}`}
       stroke-dashoffset={`-${GREEN_LEN}`}
     />
 
@@ -101,17 +62,12 @@ const tooltip = `${percent.toFixed(1)}%`;
       stroke="#ef4444"
       stroke-width="16"
       stroke-linecap="round"
-      stroke-dasharray={`${RED_LEN} 1000`}
+      stroke-dasharray={`${RED_LEN} ${FULL_ARC}`}
       stroke-dashoffset={`-${GREEN_LEN + YELLOW_LEN}`}
     />
 
-    <!-- Percent markers -->
-    <text x="40" y="95" text-anchor="middle" fill="#9ca3af" font-size="10">60%</text>
-    <text x="160" y="95" text-anchor="middle" fill="#9ca3af" font-size="10">85%</text>
-
     <!-- Needle -->
     <line
-      class="needle"
       x1={cx}
       y1={cy}
       x2={needleX}
@@ -147,4 +103,9 @@ const tooltip = `${percent.toFixed(1)}%`;
       </text>
     )}
   </svg>
+
+  <!-- Percent break labels (simple, under gauge) -->
+  <div style="margin-top:0.25rem; font-size:11px; color:#9ca3af;">
+    Green→Yellow: 60% &nbsp;|&nbsp; Yellow→Red: 85%
+  </div>
 </div>
