@@ -14,7 +14,45 @@ const HDR: Record<string, string> = {
 };
 
 // ---------------------------------------------------------
-// SAFE GRAPHQL WRAPPER (Balanced Mode + Logging + Fallback)
+// DATE NORMALIZER (FINAL FIX)
+// ---------------------------------------------------------
+function normalizeDate(raw: string): string {
+  if (!raw) return "";
+
+  // Case 1: Symliv UI format "6-Aug-26"
+  const symlivPattern = /^(\d{1,2})-(\w{3})-(\d{2})$/;
+  if (symlivPattern.test(raw)) {
+    const [_, d, mon, yy] = raw.match(symlivPattern)!;
+
+    const months: Record<string, string> = {
+      Jan: "01", Feb: "02", Mar: "03", Apr: "04",
+      May: "05", Jun: "06", Jul: "07", Aug: "08",
+      Sep: "09", Oct: "10", Nov: "11", Dec: "12",
+    };
+
+    const mm = months[mon];
+    const yyyy = "20" + yy;
+
+    return `${yyyy}-${mm}-${d.padStart(2, "0")}`;
+  }
+
+  // Case 2: ISO timestamp "2026-08-05T12:33:47.277Z"
+  const dt = new Date(raw);
+  if (!isNaN(dt.getTime())) {
+    const local = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 10);
+  }
+
+  // Case 3: Already normalized
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return raw;
+  }
+
+  return "";
+}
+
+// ---------------------------------------------------------
+// SAFE GRAPHQL WRAPPER
 // ---------------------------------------------------------
 async function gqlSafe(
   query: string,
@@ -37,8 +75,6 @@ async function gqlSafe(
 
     const ctrl = new AbortController();
     const timeout = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-
-    console.log(`[Symliv] GraphQL attempt ${attempt}/${MAX_RETRIES}`);
 
     try {
       const resp = await fetch(GQL, {
@@ -65,29 +101,12 @@ async function gqlSafe(
         throw new Error(json.errors[0]?.message ?? JSON.stringify(json.errors));
       }
 
-      const totalMs = Date.now() - startTime;
-      if (totalMs > 5000) {
-        console.warn(
-          `[Symliv] WARNING: Slow response detected (${totalMs}ms total)`
-        );
-      }
-
-      console.log(`[Symliv] Success after ${attempts} attempt(s)`);
-
       return json;
     } catch (err: any) {
       clearTimeout(timeout);
       lastError = err;
 
-      console.warn(
-        `[Symliv] Attempt ${attempt} failed: ${String(err?.message ?? err)}`
-      );
-
       if (attempt === MAX_RETRIES) {
-        console.error(
-          `[Symliv] FATAL: All ${MAX_RETRIES} attempts failed. Entering fallback mode.`
-        );
-
         return {
           data: {
             getAllPasses: {
@@ -172,17 +191,10 @@ async function fetchPasses(userToken: string): Promise<any[]> {
     userToken
   );
 
-  if (r.fallback) {
-    console.error(
-      `[Symliv] FALLBACK MODE ACTIVE — returning empty dataset. Attempts: ${r.attempts}. Last error: ${r.lastError}`
-    );
-    return [];
-  }
+  if (r.fallback) return [];
 
   const p = r?.data?.getAllPasses;
-  if (!p?.success) {
-    throw new Error("getAllPasses: " + (p?.error ?? "fail"));
-  }
+  if (!p?.success) throw new Error("getAllPasses failed");
 
   return p?.data ?? [];
 }
@@ -205,13 +217,8 @@ export async function POST({ request, cookies, locals }: APIContext) {
     (env.SYNC_KEY ?? "") &&
     request.headers.get("X-Sync-Key") === (env.SYNC_KEY ?? "");
 
-  if (!cookieOk && !keyOk) {
-    return json({ ok: false, error: "Unauthorized" }, 401);
-  }
-
-  if (!DB) {
-    return json({ ok: false, error: "DB not configured" }, 500);
-  }
+  if (!cookieOk && !keyOk) return json({ ok: false, error: "Unauthorized" }, 401);
+  if (!DB) return json({ ok: false, error: "DB not configured" }, 500);
 
   try {
     const communityToken = await getCommunityToken();
@@ -226,7 +233,6 @@ export async function POST({ request, cookies, locals }: APIContext) {
     const filtered = passes.filter((p: any) => {
       const name = (p.passInfo?.name ?? "").toLowerCase();
       const paid = (p.paid ?? "").toLowerCase();
-
       return (
         name.includes("registration") &&
         (paid.includes("paid") || paid.includes("ach"))
@@ -248,24 +254,13 @@ export async function POST({ request, cookies, locals }: APIContext) {
           p.userInfo?.lastName ?? ""
         }`.trim();
         const email = p.userInfo?.email ?? "";
-        const arr = (p.startDate ?? "").slice(0, 10);
-        const dep = (p.endDate ?? "").slice(0, 10);
+
+        const arrival = normalizeDate(p.startDate);
+        const dep = normalizeDate(p.endDate);
         const unit = p.communityRental?.address ?? "";
+        const createdAt = normalizeDate(p.createdAt);
 
-        // ⭐ Correct timezone normalization (UTC → local CST/CDT)
-		const createdAt = (() => {
-		  const raw = p.createdAt ?? "";
-
-		  // Symliv API returns ISO timestamps, not "6-Aug-26"
-		  const dt = new Date(raw);
-
-		  // Convert UTC → local CST/CDT automatically
-		  const local = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000);
-
-		  return local.toISOString().slice(0, 10); // <-- KEY CHANGE
-		})();
-
-        if (!email || !arr) {
+        if (!email || !arrival) {
           skipped++;
           continue;
         }
@@ -282,7 +277,7 @@ export async function POST({ request, cookies, locals }: APIContext) {
                createdAt  = excluded.createdAt,
                synced_at  = datetime('now')`
           )
-            .bind(name, email, arr, dep, unit, createdAt)
+            .bind(name, email, arrival, dep, unit, createdAt)
             .run();
 
           if (result.success && result.meta?.changed_db) {
@@ -299,10 +294,6 @@ export async function POST({ request, cookies, locals }: APIContext) {
         }
       }
     }
-
-    console.log(
-      `[Sync Summary] inserted=${inserted}, updated=${updated}, skipped=${skipped}, chunks=${chunks}, total=${filtered.length}`
-    );
 
     return json({
       ok: true,
