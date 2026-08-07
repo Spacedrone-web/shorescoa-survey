@@ -18,12 +18,21 @@ const rad = (angle * Math.PI) / 180;
 const needleX = cx + radius * Math.cos(rad);
 const needleY = cy + radius * Math.sin(rad);
 
-// Arc segmentation (60% green, 25% yellow, 15% red)
-const FULL_ARC = 188; // semi-circle length
+// Correct arc length for radius 80
+const FULL_ARC = Math.PI * 80; // ≈ 251.3
+
+// Segmentation (60% green, 25% yellow, 15% red)
 const GREEN_LEN = FULL_ARC * 0.60;
 const YELLOW_LEN = FULL_ARC * 0.25;
 const RED_LEN = FULL_ARC * 0.15;
 ---
+
+<!-- Label ABOVE gauge -->
+<div style="text-align:center; margin-bottom: 0.25rem;">
+  <div style="color:#e5e7eb; font-size:14px; font-weight:600;">
+    {label}
+  </div>
+</div>
 
 <svg viewBox="0 0 200 140" style="width: 100%; max-width: 260px;">
 
@@ -59,6 +68,10 @@ const RED_LEN = FULL_ARC * 0.15;
     stroke-dashoffset={`-${GREEN_LEN + YELLOW_LEN}`}
   />
 
+  <!-- Percent markers -->
+  <text x="40" y="95" text-anchor="middle" fill="#9ca3af" font-size="10">60%</text>
+  <text x="160" y="95" text-anchor="middle" fill="#9ca3af" font-size="10">85%</text>
+
   <!-- Needle -->
   <line
     x1={cx}
@@ -70,18 +83,6 @@ const RED_LEN = FULL_ARC * 0.15;
     stroke-linecap="round"
   />
   <circle cx={cx} cy={cy} r="4" fill="#f9fafb" />
-
-  <!-- Label -->
-  <text
-    x="100"
-    y="30"
-    text-anchor="middle"
-    fill="#e5e7eb"
-    font-size="14"
-    font-weight="600"
-  >
-    {label}
-  </text>
 
   <!-- Center value -->
   <text
