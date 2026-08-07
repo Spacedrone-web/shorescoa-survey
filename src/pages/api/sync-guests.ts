@@ -172,7 +172,12 @@ export async function POST({ request, cookies, locals }: APIContext) {
       const arr   = (p.startDate ?? "").slice(0, 10);
       const dep   = (p.endDate ?? "").slice(0, 10);
       const unit  = p.communityRental?.address ?? "";
-      const createdAt = p.createdAt ?? "";
+
+      // FIX: Always store createdAt
+      const createdAt =
+        p.createdAt
+          ? p.createdAt.slice(0, 19) // normalize
+          : new Date().toISOString(); // fallback
 
       if (!email || !arr) {
         skipped++;
@@ -180,20 +185,19 @@ export async function POST({ request, cookies, locals }: APIContext) {
       }
 
       try {
-		await DB.prepare(
-		  `INSERT INTO guests (guest_name, email, arrival, departure, unit, createdAt)
-		   VALUES (?, ?, ?, ?, ?, ?)
-		   ON CONFLICT(email) DO UPDATE SET
-			 guest_name = excluded.guest_name,
-			 arrival    = excluded.arrival,
-			 departure  = excluded.departure,
-			 unit       = excluded.unit,
-			 createdAt  = excluded.createdAt,
-			 synced_at  = datetime('now')`
-		)
-		.bind(name, email, arr, dep, unit, createdAt)
-		.run();
-
+        await DB.prepare(
+          `INSERT INTO guests (guest_name, email, arrival, departure, unit, createdAt)
+           VALUES (?, ?, ?, ?, ?, ?)
+           ON CONFLICT(email) DO UPDATE SET
+             guest_name = excluded.guest_name,
+             arrival    = excluded.arrival,
+             departure  = excluded.departure,
+             unit       = excluded.unit,
+             createdAt  = excluded.createdAt,
+             synced_at  = datetime('now')`
+        )
+        .bind(name, email, arr, dep, unit, createdAt)
+        .run();
 
         inserted++;
       } catch (err: any) {
@@ -216,4 +220,3 @@ export async function POST({ request, cookies, locals }: APIContext) {
     return json({ ok: false, error: String(err?.message ?? err) }, 500);
   }
 }
-
