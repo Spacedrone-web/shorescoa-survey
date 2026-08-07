@@ -5,67 +5,58 @@ import DEDICATED from "../lib/dedicated.json";
 const env = (Astro.locals as any).runtime?.env ?? {};
 const DB = env.DB;
 
-if (!DB) {
-  throw new Error("DB binding not available in StatusDashboard");
-}
+if (!DB) throw new Error("DB binding not available");
 
 // Stack → type
-const STACK_MAP: Record<string, string> = {
-  "01": "3 Bedroom", "02": "1 Bedroom", "03": "2 Bedroom", "04": "2 Bedroom",
-  "05": "Studio",    "06": "Studio",    "07": "2 Bedroom", "08": "1 Bedroom",
-  "09": "1 Bedroom", "10": "2 Bedroom", "11": "1 Bedroom", "12": "1 Bedroom",
-  "13": "1 Bedroom", "14": "1 Bedroom", "15": "1 Bedroom", "16": "1 Bedroom",
-  "17": "1 Bedroom", "18": "2 Bedroom", "19": "2 Bedroom", "20": "2 Bedroom",
-  "21": "2 Bedroom", "22": "2 Bedroom", "23": "2 Bedroom", "24": "2 Bedroom",
-  "25": "1 Bedroom", "26": "1 Bedroom", "27": "1 Bedroom", "28": "3 Bedroom",
-  "29": "2 Bedroom", "30": "1 Bedroom", "31": "3 Bedroom"
+const STACK_MAP = {
+  "01": "3 Bedroom","02": "1 Bedroom","03": "2 Bedroom","04": "2 Bedroom",
+  "05": "Studio","06": "Studio","07": "2 Bedroom","08": "1 Bedroom",
+  "09": "1 Bedroom","10": "2 Bedroom","11": "1 Bedroom","12": "1 Bedroom",
+  "13": "1 Bedroom","14": "1 Bedroom","15": "1 Bedroom","16": "1 Bedroom",
+  "17": "1 Bedroom","18": "2 Bedroom","19": "2 Bedroom","20": "2 Bedroom",
+  "21": "2 Bedroom","22": "2 Bedroom","23": "2 Bedroom","24": "2 Bedroom",
+  "25": "1 Bedroom","26": "1 Bedroom","27": "1 Bedroom","28": "3 Bedroom",
+  "29": "2 Bedroom","30": "1 Bedroom","31": "3 Bedroom"
 };
 
-// Total units by type
-const TOTAL: Record<string, number> = {
+const TOTAL = {
   "Studio": 41,
   "1 Bedroom": 292,
   "2 Bedroom": 231,
   "3 Bedroom": 61
 };
 
-// Allowed spots by type
-const ALLOWED: Record<string, number> = {
+const ALLOWED = {
   "Studio": 1,
   "1 Bedroom": 1,
   "2 Bedroom": 2,
   "3 Bedroom": 2
 };
 
-// Fetch current rentals
-const currentRentals = await DB.prepare(
-  `SELECT guest_name, email, unit, arrival, departure, createdAt
-   FROM guests
-   WHERE arrival <= date('now')
-     AND departure >= date('now')`
-).all();
+// Rentals
+const currentRentals = await DB.prepare(`
+  SELECT unit, arrival, departure, createdAt
+  FROM guests
+  WHERE arrival <= date('now') AND departure >= date('now')
+`).all();
 
-// Same-day check-ins today
-const sameDay = await DB.prepare(
-  `SELECT guest_name, email, unit, arrival, createdAt
-   FROM guests
-   WHERE arrival = date('now')
-     AND substr(createdAt, 1, 10) = date('now')`
-).all();
+// Same-day
+const sameDay = await DB.prepare(`
+  SELECT unit, arrival, createdAt
+  FROM guests
+  WHERE arrival = date('now') AND substr(createdAt,1,10)=date('now')
+`).all();
 
-// Helper: get unit number and stack/type
-function parseUnit(raw: string | null): { unitNum: number | null; type: string | null } {
+function parseUnit(raw) {
   if (!raw) return { unitNum: null, type: null };
   const base = raw.split(" ")[0];
   const unitNum = parseInt(base, 10);
   if (Number.isNaN(unitNum)) return { unitNum: null, type: null };
   const stack = base.slice(-2).padStart(2, "0");
-  const type = STACK_MAP[stack] ?? null;
-  return { unitNum, type };
+  return { unitNum, type: STACK_MAP[stack] ?? null };
 }
 
-// Count rentals by type
-const rentedByType: Record<string, number> = {
+const rentedByType = {
   "Studio": 0,
   "1 Bedroom": 0,
   "2 Bedroom": 0,
@@ -75,37 +66,30 @@ const rentedByType: Record<string, number> = {
 let yellowUsed = 0;
 const yellowTotal = 274;
 
-// For current rentals: count type + yellow used
 for (const row of currentRentals.results ?? []) {
-  const { unitNum, type } = parseUnit(row.unit as string | null);
+  const { unitNum, type } = parseUnit(row.unit);
   if (!type || !unitNum) continue;
 
   rentedByType[type]++;
 
   const dedicated = DEDICATED[unitNum] ?? 0;
   const allowed = ALLOWED[type];
-  const yellow = Math.max(0, allowed - dedicated);
-  yellowUsed += yellow;
+  yellowUsed += Math.max(0, allowed - dedicated);
 }
 
-// Same-day check-ins count
 const sameDayCount = (sameDay.results ?? []).length;
 
-// Same-day percentage
 const today = new Date().toISOString().slice(0,10);
 const totalToday = (currentRentals.results ?? []).filter(r => r.arrival === today).length;
-const sameDayPct = totalToday ? (sameDayCount / totalToday) * 100 : 0;
 
-// Bedroom percentages (fullness)
-function pct(rented: number, total: number): number {
-  return total ? (rented / total) * 100 : 0;
-}
+function pct(r, t) { return t ? (r / t) * 100 : 0; }
 
 const studioPct = pct(rentedByType["Studio"], TOTAL["Studio"]);
 const onePct = pct(rentedByType["1 Bedroom"], TOTAL["1 Bedroom"]);
 const twoPct = pct(rentedByType["2 Bedroom"], TOTAL["2 Bedroom"]);
 const threePct = pct(rentedByType["3 Bedroom"], TOTAL["3 Bedroom"]);
 const yellowPct = pct(yellowUsed, yellowTotal);
+const sameDayPct = pct(sameDayCount, totalToday);
 ---
 
 <div style="margin-top: 1.5rem;">
@@ -130,11 +114,19 @@ const yellowPct = pct(yellowUsed, yellowTotal);
 
     <Gauge
       label="Same-Day Check-ins"
-      value={`${sameDayCount}`}
+      value={`${sameDayCount}/${totalToday}`}
       percent={sameDayPct}
       subtitle="Today"
     />
 
+    <Gauge
+      label="Studios"
+      value={`${rentedByType["Studio"]}/${TOTAL["Studio"]}`}
+      percent={studioPct}
+      subtitle="Rented / Available"
+    />
+
+    <!-- BOTTOM ROW -->
     <Gauge
       label="1 Bedroom"
       value={`${rentedByType["1 Bedroom"]}/${TOTAL["1 Bedroom"]}`}
@@ -142,7 +134,6 @@ const yellowPct = pct(yellowUsed, yellowTotal);
       subtitle="Rented / Available"
     />
 
-    <!-- BOTTOM ROW -->
     <Gauge
       label="2 Bedroom"
       value={`${rentedByType["2 Bedroom"]}/${TOTAL["2 Bedroom"]}`}
@@ -154,13 +145,6 @@ const yellowPct = pct(yellowUsed, yellowTotal);
       label="3 Bedroom"
       value={`${rentedByType["3 Bedroom"]}/${TOTAL["3 Bedroom"]}`}
       percent={threePct}
-      subtitle="Rented / Available"
-    />
-
-    <Gauge
-      label="Studios"
-      value={`${rentedByType["Studio"]}/${TOTAL["Studio"]}`}
-      percent={studioPct}
       subtitle="Rented / Available"
     />
   </div>

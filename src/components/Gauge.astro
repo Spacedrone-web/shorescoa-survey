@@ -1,69 +1,59 @@
 ---
-const {
-  label,
-  value,
-  percent,
-  subtitle
-} = Astro.props;
+const { label, value, percent, subtitle } = Astro.props;
 
 // Clamp percent
 const pct = Math.max(0, Math.min(100, percent ?? 0));
 
-// Needle math (semi-circle: -90° to +90°)
+// Needle angle (-90° to +90°)
 const angle = -90 + (pct / 100) * 180;
-const radius = 80;
+const rad = (angle * Math.PI) / 180;
+
+// Needle geometry
 const cx = 100;
 const cy = 110;
-const rad = (angle * Math.PI) / 180;
+const radius = 80;
 const needleX = cx + radius * Math.cos(rad);
 const needleY = cy + radius * Math.sin(rad);
-
-// Use a normalized arc length of 100 units for clean segmentation
-const FULL_ARC = 100;
-const GREEN_LEN = FULL_ARC * 0.60; // 0–60%
-const YELLOW_LEN = FULL_ARC * 0.25; // 61–85%
-const RED_LEN = FULL_ARC * 0.15; // 86–100%
 ---
 
 <div style="text-align:center;">
 
   <!-- Label ABOVE gauge -->
-  <div style="margin-bottom: 0.25rem; color:#e5e7eb; font-size:14px; font-weight:600;">
+  <div style="margin-bottom: 0.25rem; color:#e5e7eb; font-size:15px; font-weight:600;">
     {label}
   </div>
 
   <svg viewBox="0 0 200 140" style="width: 100%; max-width: 260px;">
 
-    <!-- GREEN zone -->
+    <!-- GREEN zone (0–60%) -->
     <path
       d="M20 110 A80 80 0 0 1 180 110"
       fill="none"
       stroke="#22c55e"
       stroke-width="16"
       stroke-linecap="round"
-      stroke-dasharray={`${GREEN_LEN} ${FULL_ARC}`}
     />
 
-    <!-- YELLOW zone -->
+    <!-- YELLOW zone (overlay 60–85%) -->
     <path
       d="M20 110 A80 80 0 0 1 180 110"
       fill="none"
       stroke="#eab308"
       stroke-width="16"
       stroke-linecap="round"
-      stroke-dasharray={`${YELLOW_LEN} ${FULL_ARC}`}
-      stroke-dashoffset={`-${GREEN_LEN}`}
+      stroke-dasharray="25 200"
+      stroke-dashoffset="-60"
     />
 
-    <!-- RED zone -->
+    <!-- RED zone (overlay 85–100%) -->
     <path
       d="M20 110 A80 80 0 0 1 180 110"
       fill="none"
       stroke="#ef4444"
       stroke-width="16"
       stroke-linecap="round"
-      stroke-dasharray={`${RED_LEN} ${FULL_ARC}`}
-      stroke-dashoffset={`-${GREEN_LEN + YELLOW_LEN}`}
+      stroke-dasharray="15 200"
+      stroke-dashoffset="-85"
     />
 
     <!-- Needle -->
@@ -84,7 +74,7 @@ const RED_LEN = FULL_ARC * 0.15; // 86–100%
       y="105"
       text-anchor="middle"
       fill="#e5e7eb"
-      font-size="16"
+      font-size="17"
       font-weight="600"
     >
       {value}
@@ -103,9 +93,4 @@ const RED_LEN = FULL_ARC * 0.15; // 86–100%
       </text>
     )}
   </svg>
-
-  <!-- Percent break labels (simple, under gauge) -->
-  <div style="margin-top:0.25rem; font-size:11px; color:#9ca3af;">
-    Green→Yellow: 60% &nbsp;|&nbsp; Yellow→Red: 85%
-  </div>
 </div>
