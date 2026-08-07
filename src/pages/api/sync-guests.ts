@@ -253,17 +253,31 @@ export async function POST({ request, cookies, locals }: APIContext) {
         const unit = p.communityRental?.address ?? "";
 
         // ⭐ Correct timezone normalization (UTC → local CST/CDT)
-        const createdAt = (() => {
-          const raw = p.createdAt ?? "";
-          const iso = raw ? raw.replace("Z", "") : new Date().toISOString();
+		const createdAt = (() => {
+		  const raw = p.createdAt ?? "";
 
-          const dt = new Date(iso);
-          const local = new Date(
-            dt.getTime() - dt.getTimezoneOffset() * 60000
-          );
+		  // Symliv format: "6-Aug-26"
+		  const symlivPattern = /^(\d{1,2})-(\w{3})-(\d{2})$/;
 
-          return local.toISOString().slice(0, 19);
-        })();
+		  if (symlivPattern.test(raw)) {
+			const [_, d, mon, yy] = raw.match(symlivPattern)!;
+
+			const months: Record<string, string> = {
+			  Jan: "01", Feb: "02", Mar: "03", Apr: "04",
+			  May: "05", Jun: "06", Jul: "07", Aug: "08",
+			  Sep: "09", Oct: "10", Nov: "11", Dec: "12",
+			};
+
+			const mm = months[mon];
+			const yyyy = "20" + yy;
+
+			return `${yyyy}-${mm}-${d.padStart(2, "0")}T00:00:00`;
+		  }
+
+		  // Fallback for ISO
+		  const iso = raw.replace("Z", "");
+		  return iso.slice(0, 19);
+		})();
 
         if (!email || !arr) {
           skipped++;
