@@ -157,10 +157,16 @@ export async function POST({ request, cookies, locals }: APIContext) {
     const passes = await fetchPasses(userToken);
 
     // Step 3: Filter passes
-    const filtered = passes.filter((p: any) =>
-      p.passInfo?.name === "Registration Fee" &&
-      ["paid", "ach-pending"].includes(p.paid)
-    );
+	const filtered = passes.filter((p: any) => {
+	  const name = (p.passInfo?.name ?? "").toLowerCase();
+	  const paid = (p.paid ?? "").toLowerCase();
+
+	  return (
+		name.includes("registration") &&   // matches Registration Fee, Registration, Reg Fee, Guest Registration
+		(paid.includes("paid") || paid.includes("ach")) // matches paid, PAID, ach-pending, ACH Pending, ach_pending
+	  );
+	});
+
 
     let inserted = 0;
     let skipped  = 0;
