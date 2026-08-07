@@ -14,7 +14,7 @@ const HDR: Record<string, string> = {
 };
 
 // ---------------------------------------------------------
-// SAFE GRAPHQL WRAPPER (Balanced Mode)
+// SAFE GRAPHQL WRAPPER (Balanced Mode + Logging + Fallback)
 // ---------------------------------------------------------
 async function gqlSafe(
   query: string,
@@ -27,9 +27,18 @@ async function gqlSafe(
   const MAX_RETRIES = 3;
   const TIMEOUT_MS = 8000;
 
+  let lastError: any = null;
+  let attempts = 0;
+
+  const startTime = Date.now();
+
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    attempts++;
+
     const ctrl = new AbortController();
     const timeout = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+
+    console.log(`[Symliv] GraphQL attempt ${attempt}/${MAX_RETRIES}`);
 
     try {
       const resp = await fetch(GQL, {
@@ -56,22 +65,52 @@ async function gqlSafe(
         throw new Error(json.errors[0]?.message ?? JSON.stringify(json.errors));
       }
 
+      const totalMs = Date.now() - startTime;
+      if (totalMs > 5000) {
+        console.warn(
+          `[Symliv] WARNING: Slow response detected (${totalMs}ms total)`
+        );
+      }
+
+      console.log(`[Symliv] Success after ${attempts} attempt(s)`);
+
       return json;
     } catch (err: any) {
       clearTimeout(timeout);
+      lastError = err;
+
+      console.warn(
+        `[Symliv] Attempt ${attempt} failed: ${String(err?.message ?? err)}`
+      );
 
       if (attempt === MAX_RETRIES) {
-        throw new Error(
-          `GraphQL failed after ${MAX_RETRIES} attempts: ${String(
-            err?.message ?? err
-          )}`
+        console.error(
+          `[Symliv] FATAL: All ${MAX_RETRIES} attempts failed. Entering fallback mode.`
         );
+
+        // -----------------------------
+        // ⭐ FALLBACK MODE
+        // -----------------------------
+        return {
+          data: {
+            getAllPasses: {
+              success: true,
+              error: null,
+              data: [], // empty dataset fallback
+            },
+          },
+          fallback: true,
+          attempts,
+          lastError: String(lastError?.message ?? lastError),
+        };
       }
 
       // Exponential backoff
       await new Promise((res) => setTimeout(res, attempt * 500));
     }
   }
+
+  throw new Error("Unexpected gqlSafe exit");
 }
 
 // ---------------------------------------------------------
@@ -115,7 +154,7 @@ async function loginUser(
 }
 
 // ---------------------------------------------------------
-// Fetch passes (modern schema)
+// Fetch passes (with fallback logging)
 // ---------------------------------------------------------
 async function fetchPasses(userToken: string): Promise<any[]> {
   const r = await gqlSafe(
@@ -137,6 +176,13 @@ async function fetchPasses(userToken: string): Promise<any[]> {
     userToken
   );
 
+  if (r.fallback) {
+    console.error(
+      `[Symliv] FALLBACK MODE ACTIVE — returning empty dataset. Attempts: ${r.attempts}. Last error: ${r.lastError}`
+    );
+    return [];
+  }
+
   const p = r?.data?.getAllPasses;
   if (!p?.success) {
     throw new Error("getAllPasses: " + (p?.error ?? "fail"));
@@ -146,7 +192,7 @@ async function fetchPasses(userToken: string): Promise<any[]> {
 }
 
 // ---------------------------------------------------------
-// Main sync endpoint (Balanced Mode)
+// Main sync endpoint (Balanced Mode + Logging)
 // ---------------------------------------------------------
 export async function POST({ request, cookies, locals }: APIContext) {
   const json = (obj: any, status = 200) =>
@@ -254,6 +300,10 @@ export async function POST({ request, cookies, locals }: APIContext) {
         }
       }
     }
+
+    console.log(
+      `[Sync Summary] inserted=${inserted}, updated=${updated}, skipped=${skipped}, chunks=${chunks}, total=${filtered.length}`
+    );
 
     return json({
       ok: true,
