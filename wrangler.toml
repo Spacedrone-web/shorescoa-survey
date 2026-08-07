@@ -3,8 +3,8 @@ compatibility_date = "2024-09-23"
 pages_build_output_dir = "dist"
 
 [limits]
-# Raise Cloudflare Worker subrequest limit
-# Default is 50 — your Symliv sync exceeds this
+# Required for Cloudflare Pages
+cpu_ms = 10000
 subrequests = 50000
 
 [[d1_databases]]
