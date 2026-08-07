@@ -1,6 +1,6 @@
 ---
 import Gauge from "./Gauge.astro";
-import DEDICATED from "../data/dedicated.json";
+import DEDICATED from "../lib/dedicated.json";
 
 const env = (Astro.locals as any).runtime?.env ?? {};
 const DB = env.DB;
