@@ -28,7 +28,15 @@ const TOTAL: Record<string, number> = {
   "3 Bedroom": 61
 };
 
-// Dedicated spots (flattened from your table)
+// Allowed spots by type
+const ALLOWED: Record<string, number> = {
+  "Studio": 1,
+  "1 Bedroom": 1,
+  "2 Bedroom": 2,
+  "3 Bedroom": 2
+};
+
+// Dedicated spots table
 const DEDICATED: Record<number, number> = {
   101:2,102:1,103:1,104:2,105:1,106:1,108:1,109:1,111:1,112:1,116:1,118:1,
   120:1,123:1,124:1,125:1,127:1,130:1,
@@ -97,14 +105,6 @@ const DEDICATED: Record<number, number> = {
   3301:1
 };
 
-// Allowed spots by type
-const ALLOWED: Record<string, number> = {
-  "Studio": 1,
-  "1 Bedroom": 1,
-  "2 Bedroom": 2,
-  "3 Bedroom": 2
-};
-
 // Fetch current rentals
 const currentRentals = await DB.prepare(
   `SELECT guest_name, email, unit, arrival, departure, createdAt
@@ -124,7 +124,7 @@ const sameDay = await DB.prepare(
 // Helper: get unit number and stack/type
 function parseUnit(raw: string | null): { unitNum: number | null; type: string | null } {
   if (!raw) return { unitNum: null, type: null };
-  const base = raw.split(" ")[0]; // "1805"
+  const base = raw.split(" ")[0];
   const unitNum = parseInt(base, 10);
   if (Number.isNaN(unitNum)) return { unitNum: null, type: null };
   const stack = base.slice(-2).padStart(2, "0");
@@ -143,24 +143,12 @@ const rentedByType: Record<string, number> = {
 let yellowUsed = 0;
 const yellowTotal = 274;
 
-// Precompute total possible yellow spots across all units
-for (const [unitStr, dedicated] of Object.entries(DEDICATED)) {
-  const unitNum = parseInt(unitStr, 10);
-  const base = unitStr;
-  const stack = base.slice(-2).padStart(2, "0");
-  const type = STACK_MAP[stack];
-  if (!type) continue;
-  const allowed = ALLOWED[type];
-  const yellow = Math.max(0, allowed - dedicated);
-  yellowTotal += yellow;
-}
-
 // For current rentals: count type + yellow used
 for (const row of currentRentals.results ?? []) {
   const { unitNum, type } = parseUnit(row.unit as string | null);
   if (!type || !unitNum) continue;
 
-  rentedByType[type] = (rentedByType[type] ?? 0) + 1;
+  rentedByType[type]++;
 
   const dedicated = DEDICATED[unitNum] ?? 0;
   const allowed = ALLOWED[type];
@@ -171,27 +159,21 @@ for (const row of currentRentals.results ?? []) {
 // Same-day check-ins count
 const sameDayCount = (sameDay.results ?? []).length;
 
-// Gauge values
-const studioRented = rentedByType["Studio"];
-const oneRented = rentedByType["1 Bedroom"];
-const twoRented = rentedByType["2 Bedroom"];
-const threeRented = rentedByType["3 Bedroom"];
-
-function pct(rented: number, total: number): number {
-  if (!total) return 0;
-  return (rented / total) * 100;
-}
-
-const studioPct = pct(studioRented, TOTAL["Studio"]);
-const onePct = pct(oneRented, TOTAL["1 Bedroom"]);
-const twoPct = pct(twoRented, TOTAL["2 Bedroom"]);
-const threePct = pct(threeRented, TOTAL["3 Bedroom"]);
-
-const yellowPct = pct(yellowUsed, yellowTotal);
+// Same-day percentage
 const today = new Date().toISOString().slice(0,10);
 const totalToday = (currentRentals.results ?? []).filter(r => r.arrival === today).length;
 const sameDayPct = totalToday ? (sameDayCount / totalToday) * 100 : 0;
 
+// Bedroom percentages
+function pct(rented: number, total: number): number {
+  return total ? (rented / total) * 100 : 0;
+}
+
+const studioPct = pct(rentedByType["Studio"], TOTAL["Studio"]);
+const onePct = pct(rentedByType["1 Bedroom"], TOTAL["1 Bedroom"]);
+const twoPct = pct(rentedByType["2 Bedroom"], TOTAL["2 Bedroom"]);
+const threePct = pct(rentedByType["3 Bedroom"], TOTAL["3 Bedroom"]);
+const yellowPct = pct(yellowUsed, yellowTotal);
 ---
 
 <div style="margin-top: 1.5rem;">
@@ -224,7 +206,7 @@ const sameDayPct = totalToday ? (sameDayCount / totalToday) * 100 : 0;
 
     <Gauge
       label="Studios"
-      value={`${studioRented}/${TOTAL["Studio"]}`}
+      value={`${rentedByType["Studio"]}/${TOTAL["Studio"]}`}
       max={TOTAL["Studio"]}
       percent={studioPct}
       subtitle="Rented / Available"
@@ -232,26 +214,4 @@ const sameDayPct = totalToday ? (sameDayCount / totalToday) * 100 : 0;
 
     <Gauge
       label="1 Bedroom"
-      value={`${oneRented}/${TOTAL["1 Bedroom"]}`}
-      max={TOTAL["1 Bedroom"]}
-      percent={onePct}
-      subtitle="Rented / Available"
-    />
-
-    <Gauge
-      label="2 Bedroom"
-      value={`${twoRented}/${TOTAL["2 Bedroom"]}`}
-      max={TOTAL["2 Bedroom"]}
-      percent={twoPct}
-      subtitle="Rented / Available"
-    />
-
-    <Gauge
-      label="3 Bedroom"
-      value={`${threeRented}/${TOTAL["3 Bedroom"]}`}
-      max={TOTAL["3 Bedroom"]}
-      percent={threePct}
-      subtitle="Rented / Available"
-    />
-  </div>
-</div>
+      value={`${rentedByType["
