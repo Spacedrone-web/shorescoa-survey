@@ -256,28 +256,13 @@ export async function POST({ request, cookies, locals }: APIContext) {
 		const createdAt = (() => {
 		  const raw = p.createdAt ?? "";
 
-		  // Symliv format: "6-Aug-26"
-		  const symlivPattern = /^(\d{1,2})-(\w{3})-(\d{2})$/;
+		  // Symliv API returns ISO timestamps, not "6-Aug-26"
+		  const dt = new Date(raw);
 
-		  if (symlivPattern.test(raw)) {
-			const [_, d, mon, yy] = raw.match(symlivPattern)!;
+		  // Convert UTC → local CST/CDT automatically
+		  const local = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000);
 
-			const months: Record<string, string> = {
-			  Jan: "01", Feb: "02", Mar: "03", Apr: "04",
-			  May: "05", Jun: "06", Jul: "07", Aug: "08",
-			  Sep: "09", Oct: "10", Nov: "11", Dec: "12",
-			};
-
-			const mm = months[mon];
-			const yyyy = "20" + yy;
-
-			// Normalize to ISO local midnight
-			return `${yyyy}-${mm}-${d.padStart(2, "0")}T00:00:00`;
-		  }
-
-		  // Fallback for ISO-like values
-		  const iso = raw.replace("Z", "");
-		  return iso.slice(0, 19);
+		  return local.toISOString().slice(0, 19);
 		})();
 
         if (!email || !arr) {
