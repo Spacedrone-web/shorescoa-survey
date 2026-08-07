@@ -262,9 +262,15 @@ export async function POST({ request, cookies, locals }: APIContext) {
         const dep = (p.endDate ?? "").slice(0, 10);
         const unit = p.communityRental?.address ?? "";
 
-        const createdAt = p.createdAt
-          ? p.createdAt.slice(0, 19)
-          : new Date().toISOString();
+		const createdAt = (() => {
+		  const raw = p.createdAt ?? "";
+		  if (!raw) return new Date().toISOString().slice(0, 19);
+
+		  // Normalize Symliv format: 2026-07-25T07:08:53.242Z
+		  // → 2026-07-25T07:08:53
+		  return raw.replace("Z", "").slice(0, 19);
+		})();
+
 
         if (!email || !arr) {
           skipped++;
