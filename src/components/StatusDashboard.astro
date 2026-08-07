@@ -33,11 +33,32 @@ const ALLOWED = {
   "3 Bedroom": 2
 };
 
-// Rentals (all active today)
+// ACTIVE TODAY
 const currentRentals = await DB.prepare(`
   SELECT unit, arrival, departure, createdAt
   FROM guests
   WHERE arrival <= date('now') AND departure > date('now')
+`).all();
+
+// DEPARTING TODAY
+const departingToday = await DB.prepare(`
+  SELECT unit, arrival, departure, createdAt
+  FROM guests
+  WHERE departure = date('now')
+`).all();
+
+// ARRIVING TOMORROW
+const arrivingTomorrow = await DB.prepare(`
+  SELECT unit, arrival, departure, createdAt
+  FROM guests
+  WHERE arrival = date('now', '+1 day')
+`).all();
+
+// SAME-DAY CHECK-INS
+const sameDay = await DB.prepare(`
+  SELECT unit, arrival, departure, createdAt
+  FROM guests
+  WHERE arrival = date('now') AND arrival = createdAt
 `).all();
 
 // Helper: parse unit → number + type
@@ -72,31 +93,12 @@ for (const row of currentRentals.results ?? []) {
   yellowUsed += Math.max(0, allowed - dedicated);
 }
 
-// DATE HELPERS
-const today = new Date().toISOString().slice(0,10);
-
-// Tomorrow (YYYY-MM-DD)
-const tomorrow = (() => {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return d.toISOString().slice(0,10);
-})();
-
-// SAME-DAY CHECK-IN LOGIC
-const arrivalsToday = (currentRentals.results ?? []).filter(r => r.arrival === today);
-const sameDay = arrivalsToday.filter(r => r.arrival === r.createdAt);
-
-const sameDayCount = sameDay.length;
-const totalTodayCount = arrivalsToday.length;
-const sameDayPct = totalTodayCount ? (sameDayCount / totalTodayCount) * 100 : 0;
-
-// DEPARTING TODAY
-const departingToday = (currentRentals.results ?? []).filter(r => r.departure === today);
-const departingTodayCount = departingToday.length;
-
-// ARRIVING TOMORROW
-const arrivingTomorrow = (currentRentals.results ?? []).filter(r => r.arrival === tomorrow);
-const arrivingTomorrowCount = arrivingTomorrow.length;
+// Total occupancy
+const totalOccupancy =
+  rentedByType["Studio"] +
+  rentedByType["1 Bedroom"] +
+  rentedByType["2 Bedroom"] +
+  rentedByType["3 Bedroom"];
 
 // Percent helper
 function pct(r, t) { return t ? (r / t) * 100 : 0; }
@@ -139,29 +141,46 @@ function statusLabel(p) {
 
     <StatusCard
       label="Same-Day Check-ins"
-      value={`${sameDayCount}/${totalTodayCount}`}
-      percent={sameDayPct}
-      status={statusLabel(sameDayPct)}
+      value={`${sameDay.results.length}`}
+      percent={0}
+      status="Info"
       note="Arrival date matches created date"
     />
 
     <StatusCard
       label="Departing Today"
-      value={`${departingTodayCount}`}
+      value={`${departingToday.results.length}`}
       percent={0}
       status="Info"
       note="Guests leaving today"
     />
 
-    <!-- BOTTOM ROW -->
+    <!-- SECOND ROW -->
     <StatusCard
       label="Arriving Tomorrow"
-      value={`${arrivingTomorrowCount}`}
+      value={`${arrivingTomorrow.results.length}`}
       percent={0}
       status="Info"
-      note="Forecast arrivals"
+      note="Guests arriving tomorrow"
     />
 
+    <StatusCard
+      label="Total Occupancy"
+      value={`${totalOccupancy}`}
+      percent={0}
+      status="Info"
+      note="Total active rentals today"
+    />
+
+    <StatusCard
+      label="Studios"
+      value={`${rentedByType["Studio"]}/${TOTAL["Studio"]}`}
+      percent={studioPct}
+      status={statusLabel(studioPct)}
+      note="Rented / Available"
+    />
+
+    <!-- THIRD ROW -->
     <StatusCard
       label="1 Bedroom"
       value={`${rentedByType["1 Bedroom"]}/${TOTAL["1 Bedroom"]}`}
