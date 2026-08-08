@@ -354,8 +354,8 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
       '&subject=' + subject + '&body=' + body;
   });
 
---- FULL FILE BLOCK 1 START ---
---- FULL FILE BLOCK 1 START ---
+  /* --- FULL FILE BLOCK 1 START --- */
+  /* --- FULL FILE BLOCK 1 START --- */
 export const prerender = false;
 const authed = Astro.cookies.get("admin_auth")?.value === "shores-admin-ok";
 if (!authed) return Astro.redirect("/admin");
@@ -555,7 +555,7 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
   }
   /* --- FULL FILE BLOCK 1 END --- */
   
---- FULL FILE BLOCK 2 START ---
+  /* --- FULL FILE BLOCK 2 START --- */
   /* ── filter + render ── */
   function applyFilters() {
     const cut  = cutoff();
@@ -719,7 +719,7 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
   });
 /* --- FULL FILE BLOCK 2 END --- */
 
---- FULL FILE BLOCK 3 START ---
+/* --- FULL FILE BLOCK 3 START --- */
   /* ── Mark Selected as Sent ── */
   markSentBtn.addEventListener('click', async () => {
     const checked = document.querySelectorAll('.row-check:checked');
