@@ -47,9 +47,15 @@ export async function GET({ cookies, locals }: APIContext) {
     const metaRow = await DB.prepare(
       `SELECT value FROM meta WHERE key = 'last_synced'`
     ).first();
+
     const lastSynced: string | null = metaRow?.value ?? null;
 
-    const _meta = await DB.prepare('SELECT value FROM meta WHERE key=?').bind('last_synced').first(); return j({ok:true, lastSynced:(_meta as any)?.value??null, guests: guests ?? [], lastSynced });
+    // FIXED: remove duplicate key
+    return j({
+      ok: true,
+      lastSynced,
+      guests: guests ?? []
+    });
 
   } catch (err: any) {
     return j({ ok: false, error: String(err?.message ?? err) }, 500);
@@ -72,5 +78,3 @@ export async function PATCH({ request, cookies, locals }: APIContext) {
     return j({ ok: false, error: String(err?.message ?? err) }, 500);
   }
 }
-
-
