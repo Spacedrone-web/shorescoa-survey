@@ -290,6 +290,15 @@ export async function POST({ request, cookies, locals }: APIContext) {
       }
     }
 
+    // ---------------------------------------------------------
+    // Update last_synced meta timestamp
+    // ---------------------------------------------------------
+    await DB.prepare(
+      `INSERT INTO meta (key, value)
+       VALUES ('last_synced', datetime('now'))
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+    ).run();
+
     return json({
       ok: true,
       inserted,
@@ -297,6 +306,7 @@ export async function POST({ request, cookies, locals }: APIContext) {
       skipped,
       chunks,
       total: filtered.length,
+      lastSynced: new Date().toISOString(),
     });
   } catch (err: any) {
     return json({ ok: false, error: String(err?.message ?? err) }, 500);
