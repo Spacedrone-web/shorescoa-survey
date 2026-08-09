@@ -1,5 +1,5 @@
 ---
-console.log("DB binding:", !!DB);
+console.log("SSR: status dashboard starting");
 
 import StatusCard from "./StatusCard.astro";
 import DEDICATED from "../lib/dedicated.json";
@@ -8,21 +8,29 @@ const env = (Astro.locals as any).runtime?.env ?? {};
 const DB = env.DB;
 
 console.log("DB binding:", !!DB);
-
 if (!DB) throw new Error("DB binding not available");
 
 // ---------------------------------------------------------
-// LAST SYMLIV SYNC (from pipeline_runs)
+// LAST PIPELINE RUN (new pipeline_runs table)
 // ---------------------------------------------------------
 const lastSync = await DB.prepare(`
-  SELECT run_at, sync_time, gathered, pushed, failed, duration_ms
+  SELECT run_at, gathered, pushed, failed, duration_ms
   FROM pipeline_runs
   ORDER BY id DESC
   LIMIT 1
 `).first();
 
 // ---------------------------------------------------------
-// UNIT TYPE MAPS
+// CURRENT RENTALS
+// ---------------------------------------------------------
+const currentRentals = await DB.prepare(`
+  SELECT unit, arrival, departure, createdAt
+  FROM guests
+  WHERE arrival <= date('now') AND departure > date('now')
+`).all();
+
+// ---------------------------------------------------------
+// HELPERS
 // ---------------------------------------------------------
 const STACK_MAP = {
   "01": "3 Bedroom","02": "1 Bedroom","03": "2 Bedroom","04": "2 Bedroom",
@@ -49,18 +57,6 @@ const ALLOWED = {
   "3 Bedroom": 2
 };
 
-// ---------------------------------------------------------
-// CURRENT RENTALS
-// ---------------------------------------------------------
-const currentRentals = await DB.prepare(`
-  SELECT unit, arrival, departure, createdAt
-  FROM guests
-  WHERE arrival <= date('now') AND departure > date('now')
-`).all();
-
-// ---------------------------------------------------------
-// HELPERS
-// ---------------------------------------------------------
 function parseUnit(raw) {
   if (!raw) return { unitNum: null, type: null };
   const base = raw.split(" ")[0];
@@ -71,7 +67,6 @@ function parseUnit(raw) {
 }
 
 function pct(r, t) { return t ? (r / t) * 100 : 0; }
-
 function statusLabel(p) {
   if (p < 60) return "Low (Green)";
   if (p < 85) return "Moderate (Yellow)";
@@ -79,7 +74,7 @@ function statusLabel(p) {
 }
 
 // ---------------------------------------------------------
-// RENTAL COUNTS (CRASH-PROOF VERSION)
+// RENTAL COUNTS
 // ---------------------------------------------------------
 const rentedByType = {
   "Studio": 0,
@@ -93,14 +88,9 @@ const yellowTotal = 274;
 
 for (const row of (currentRentals?.results || [])) {
   const { unitNum, type } = parseUnit(row.unit);
-
-  // Prevent SSR crashes from malformed units
   if (!type || !unitNum) continue;
 
-  // Safe increment
-  if (rentedByType[type] !== undefined) {
-    rentedByType[type]++;
-  }
+  rentedByType[type]++;
 
   const dedicated = DEDICATED[unitNum] ?? 0;
   const allowed = ALLOWED[type] ?? 0;
@@ -125,7 +115,7 @@ const sameDayRow = await DB.prepare(`
 
 const totalTodayCount = arrivalsTodayRow?.count ?? 0;
 const sameDayCount = sameDayRow?.count ?? 0;
-const sameDayPct = totalTodayCount ? (sameDayCount / totalTodayCount) * 100 : 0;
+const sameDayPct = pct(sameDayCount, totalTodayCount);
 
 // ---------------------------------------------------------
 // DEPARTING TODAY
@@ -150,7 +140,7 @@ const arrivingTomorrowRow = await DB.prepare(`
 const arrivingTomorrowCount = arrivingTomorrowRow?.count ?? 0;
 
 // ---------------------------------------------------------
-// PERCENTAGES
+// TOTAL OCCUPANCY
 // ---------------------------------------------------------
 const studioPct = pct(rentedByType["Studio"], TOTAL["Studio"]);
 const onePct = pct(rentedByType["1 Bedroom"], TOTAL["1 Bedroom"]);
@@ -179,8 +169,8 @@ const totalPct = pct(totalRented, totalUnits);
   </p>
 
   <p style="margin-bottom: 1.5rem; color:#6b7280; font-size: 0.9rem;">
-    Last synced from Symliv:
-    <strong>{lastSync?.sync_time ?? "No sync recorded"}</strong><br />
+    Last pipeline sync:
+    <strong>{lastSync?.run_at ?? "No sync recorded"}</strong><br />
     Rows processed: {lastSync?.gathered ?? 0},
     pushed: {lastSync?.pushed ?? 0},
     failed: {lastSync?.failed ?? 0}
@@ -193,76 +183,14 @@ const totalPct = pct(totalRented, totalUnits);
       gap: 1.5rem;
     "
   >
-    <StatusCard
-      label="Yellow Parking"
-      value={`${yellowUsed}/${yellowTotal}`}
-      percent={yellowPct}
-      status={statusLabel(yellowPct)}
-      note="Yellow spaces in use"
-    />
-
-    <StatusCard
-      label="Same-Day Check-ins"
-      value={`${sameDayCount}/${totalTodayCount}`}
-      percent={sameDayPct}
-      status={statusLabel(sameDayPct)}
-      note="Arrival date matches created date"
-    />
-
-    <StatusCard
-      label="Departing Today"
-      value={`${departingTodayCount}`}
-      percent={0}
-      status="Info"
-      note="Guests leaving today"
-    />
-
-    <StatusCard
-      label="Arriving Tomorrow"
-      value={`${arrivingTomorrowCount}`}
-      percent={0}
-      status="Info"
-      note="Forecast arrivals"
-    />
-
-    <StatusCard
-      label="Studio"
-      value={`${rentedByType["Studio"]}/${TOTAL["Studio"]}`}
-      percent={studioPct}
-      status={statusLabel(studioPct)}
-      note="Rented / Available"
-    />
-
-    <StatusCard
-      label="1 Bedroom"
-      value={`${rentedByType["1 Bedroom"]}/${TOTAL["1 Bedroom"]}`}
-      percent={onePct}
-      status={statusLabel(onePct)}
-      note="Rented / Available"
-    />
-
-    <StatusCard
-      label="2 Bedroom"
-      value={`${rentedByType["2 Bedroom"]}/${TOTAL["2 Bedroom"]}`}
-      percent={twoPct}
-      status={statusLabel(twoPct)}
-      note="Rented / Available"
-    />
-
-    <StatusCard
-      label="3 Bedroom"
-      value={`${rentedByType["3 Bedroom"]}/${TOTAL["3 Bedroom"]}`}
-      percent={threePct}
-      status={statusLabel(threePct)}
-      note="Rented / Available"
-    />
-
-    <StatusCard
-      label="Total Occupancy"
-      value={`${totalRented}/${totalUnits}`}
-      percent={totalPct}
-      status={statusLabel(totalPct)}
-      note="All rented units vs total"
-    />
+    <StatusCard label="Yellow Parking" value={`${yellowUsed}/${yellowTotal}`} percent={yellowPct} status={statusLabel(yellowPct)} note="Yellow spaces in use" />
+    <StatusCard label="Same-Day Check-ins" value={`${sameDayCount}/${totalTodayCount}`} percent={sameDayPct} status={statusLabel(sameDayPct)} note="Arrival date matches created date" />
+    <StatusCard label="Departing Today" value={`${departingTodayCount}`} percent={0} status="Info" note="Guests leaving today" />
+    <StatusCard label="Arriving Tomorrow" value={`${arrivingTomorrowCount}`} percent={0} status="Info" note="Forecast arrivals" />
+    <StatusCard label="Studio" value={`${rentedByType["Studio"]}/${TOTAL["Studio"]}`} percent={studioPct} status={statusLabel(studioPct)} note="Rented / Available" />
+    <StatusCard label="1 Bedroom" value={`${rentedByType["1 Bedroom"]}/${TOTAL["1 Bedroom"]}`} percent={onePct} status={statusLabel(onePct)} note="Rented / Available" />
+    <StatusCard label="2 Bedroom" value={`${rentedByType["2 Bedroom"]}/${TOTAL["2 Bedroom"]}`} percent={twoPct} status={statusLabel(twoPct)} note="Rented / Available" />
+    <StatusCard label="3 Bedroom" value={`${rentedByType["3 Bedroom"]}/${TOTAL["3 Bedroom"]}`} percent={threePct} status={statusLabel(threePct)} note="Rented / Available" />
+    <StatusCard label="Total Occupancy" value={`${totalRented}/${totalUnits}`} percent={totalPct} status={statusLabel(totalPct)} note="All rented units vs total" />
   </div>
 </div>
