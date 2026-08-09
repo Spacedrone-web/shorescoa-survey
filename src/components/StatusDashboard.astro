@@ -87,7 +87,7 @@ const rentedByType = {
 let yellowUsed = 0;
 const yellowTotal = 274;
 
-for (const row of currentRentals.results ?? []) {
+for (const row of (currentRentals?.results || [])){
   const { unitNum, type } = parseUnit(row.unit);
   if (!type || !unitNum) continue;
 
@@ -235,7 +235,7 @@ const totalPct = pct(totalRented, totalUnits);
       note="Rented / Available"
     />
 
-    <!-- THIRD ROW 44 -->
+    <!-- THIRD ROW  -->
     <StatusCard
       label="2 Bedroom"
       value={`${rentedByType["2 Bedroom"]}/${TOTAL["2 Bedroom"]}`}
