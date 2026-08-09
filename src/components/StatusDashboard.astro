@@ -75,7 +75,7 @@ function statusLabel(p) {
 }
 
 // ---------------------------------------------------------
-// RENTAL COUNTS
+// RENTAL COUNTS (CRASH-PROOF VERSION)
 // ---------------------------------------------------------
 const rentedByType = {
   "Studio": 0,
@@ -87,14 +87,20 @@ const rentedByType = {
 let yellowUsed = 0;
 const yellowTotal = 274;
 
-for (const row of (currentRentals?.results || [])){
+for (const row of (currentRentals?.results || [])) {
   const { unitNum, type } = parseUnit(row.unit);
+
+  // Prevent SSR crashes from malformed units
   if (!type || !unitNum) continue;
 
-  rentedByType[type]++;
+  // Safe increment
+  if (rentedByType[type] !== undefined) {
+    rentedByType[type]++;
+  }
 
   const dedicated = DEDICATED[unitNum] ?? 0;
-  const allowed = ALLOWED[type];
+  const allowed = ALLOWED[type] ?? 0;
+
   yellowUsed += Math.max(0, allowed - dedicated);
 }
 
@@ -164,12 +170,10 @@ const totalPct = pct(totalRented, totalUnits);
 ---
 
 <div style="margin-top: 1.5rem;">
-  <!-- Timestamp -->
   <p style="margin-bottom: 0.5rem; color:#9ca3af;">
     Status as of {new Date().toLocaleString("en-US", { timeZone: "America/Denver" })}
   </p>
 
-  <!-- Last Sync -->
   <p style="margin-bottom: 1.5rem; color:#6b7280; font-size: 0.9rem;">
     Last synced from Symliv:
     <strong>{lastSync?.sync_time ?? "No sync recorded"}</strong><br />
@@ -185,7 +189,6 @@ const totalPct = pct(totalRented, totalUnits);
       gap: 1.5rem;
     "
   >
-    <!-- TOP ROW -->
     <StatusCard
       label="Yellow Parking"
       value={`${yellowUsed}/${yellowTotal}`}
@@ -210,7 +213,6 @@ const totalPct = pct(totalRented, totalUnits);
       note="Guests leaving today"
     />
 
-    <!-- SECOND ROW -->
     <StatusCard
       label="Arriving Tomorrow"
       value={`${arrivingTomorrowCount}`}
@@ -235,7 +237,6 @@ const totalPct = pct(totalRented, totalUnits);
       note="Rented / Available"
     />
 
-    <!-- THIRD ROW  -->
     <StatusCard
       label="2 Bedroom"
       value={`${rentedByType["2 Bedroom"]}/${TOTAL["2 Bedroom"]}`}
