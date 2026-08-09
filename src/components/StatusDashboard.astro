@@ -24,7 +24,7 @@ const lastSync = await DB.prepare(`
 // CURRENT RENTALS
 // ---------------------------------------------------------
 const currentRentals = await DB.prepare(`
-  SELECT unit, arrival, departure, createdAt
+  SELECT unit, arrival, departure, created
   FROM guests
   WHERE arrival <= date('now') AND departure > date('now')
 `).all();
@@ -110,7 +110,7 @@ const arrivalsTodayRow = await DB.prepare(`
 const sameDayRow = await DB.prepare(`
   SELECT COUNT(*) AS count
   FROM guests
-  WHERE arrival = date('now') AND arrival = createdAt
+  WHERE arrival = date('now') AND arrival = created
 `).first();
 
 const totalTodayCount = arrivalsTodayRow?.count ?? 0;
