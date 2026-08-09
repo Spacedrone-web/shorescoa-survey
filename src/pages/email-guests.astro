@@ -1,5 +1,5 @@
 ---
-export const prerender = false;
+const prerender = false;
 const authed = Astro.cookies.get("admin_auth")?.value === "shores-admin-ok";
 if (!authed) return Astro.redirect("/admin");
 ---
