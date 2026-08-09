@@ -11,12 +11,12 @@ console.log("DB binding:", !!DB);
 if (!DB) throw new Error("DB binding not available");
 
 // ---------------------------------------------------------
-// LAST PIPELINE RUN (new pipeline_runs table)
+// LAST PIPELINE RUN
 // ---------------------------------------------------------
 const lastSync = await DB.prepare(`
   SELECT run_at, gathered, pushed, failed, duration_ms
   FROM pipeline_runs
-  ORDER BY id DESC
+  ORDER BY run_at DESC
   LIMIT 1
 `).first();
 
