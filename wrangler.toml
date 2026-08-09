@@ -9,5 +9,5 @@ subrequests = 50000
 
 [[d1_databases]]
 binding = "DB"
-database_name = "shorescoa_survey"
-database_id = "fb0ffd00-e81a-405b-b7d7-677d23b1cb7c"
+database_name = "sop-passes-db"
+database_id = "d4c280b7-ac3e-45cc-bece-cf6181a1ce6d"
