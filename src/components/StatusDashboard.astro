@@ -170,7 +170,14 @@ const totalPct = pct(totalRented, totalUnits);
 
   <p style="margin-bottom: 1.5rem; color:#6b7280; font-size: 0.9rem;">
     Last pipeline sync:
-    <strong>{lastSync?.run_at ?? "No sync recorded"}</strong><br />
+    <strong>
+      {lastSync
+        ? new Date(lastSync.run_at).toLocaleString("en-US", {
+            timeZone: "America/Chicago",
+            hour12: true
+          })
+        : "No sync recorded"}
+    </strong><br />
     Rows processed: {lastSync?.gathered ?? 0},
     pushed: {lastSync?.pushed ?? 0},
     failed: {lastSync?.failed ?? 0}
