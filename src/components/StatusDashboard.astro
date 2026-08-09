@@ -190,7 +190,7 @@ const totalPct = pct(totalRented, totalUnits);
       gap: 1.5rem;
     "
   >
-    <StatusCard label="Yellow Parking" value={`${yellowUsed}/${yellowTotal}`} percent={yellowPct} status={statusLabel(yellowPct)} note="Yellow spaces in use" />
+    <StatusCard label="Yellow Parking" value={`${yellowUsed}/${yellowTotal}`} percent={yellowPct} status={statusLabel(yellowPct)} note="Yellow spaces in use, Does not accout for BB or Staff" />
     <StatusCard label="Same-Day Check-ins" value={`${sameDayCount}/${totalTodayCount}`} percent={sameDayPct} status={statusLabel(sameDayPct)} note="Arrival date matches created date" />
     <StatusCard label="Departing Today" value={`${departingTodayCount}`} percent={0} status="Info" note="Guests leaving today" />
     <StatusCard label="Arriving Tomorrow" value={`${arrivingTomorrowCount}`} percent={0} status="Info" note="Forecast arrivals" />
