@@ -1,15 +1,1 @@
-﻿name: Sync Symliv Guests
-on:
-  schedule:
-    - cron: "*/5 * * * *"   # Every 5 days at 10am UTC
-  workflow_dispatch:           # Allow manual trigger from GitHub Actions tab
-
-jobs:
-  sync:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger guest sync
-        run: |
-          curl -s -X POST \
-            -H "X-Sync-Key: ${{ secrets.SYNC_KEY }}" \
-            https://survey.shorescoa.com/api/sync-guests | cat
+﻿
