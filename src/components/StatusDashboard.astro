@@ -1,9 +1,13 @@
 ---
+console.log("DB binding:", !!DB);
+
 import StatusCard from "./StatusCard.astro";
 import DEDICATED from "../lib/dedicated.json";
 
 const env = (Astro.locals as any).runtime?.env ?? {};
 const DB = env.DB;
+
+console.log("DB binding:", !!DB);
 
 if (!DB) throw new Error("DB binding not available");
 
