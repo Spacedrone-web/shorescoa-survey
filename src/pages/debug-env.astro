@@ -1,0 +1,10 @@
+---
+export const prerender = false;
+
+const env = Astro.locals.runtime.env;
+console.log("DEBUG ENV:", env);
+---
+
+<pre>
+{JSON.stringify(env, null, 2)}
+</pre>
