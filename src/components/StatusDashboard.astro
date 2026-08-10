@@ -30,7 +30,7 @@ const lastSync = await DB.prepare(`
 const currentRentals = await DB.prepare(`
   SELECT unit, arrival, departure, created
   FROM guests
-  WHERE arrival <= date('now') AND departure > date('now')
+  WHERE arrival <= date('now','-5 hours') AND departure > date('now','-5 hours') 
 `).all();
 
 // ---------------------------------------------------------
@@ -108,13 +108,13 @@ for (const row of (currentRentals?.results || [])) {
 const arrivalsTodayRow = await DB.prepare(`
   SELECT COUNT(*) AS count
   FROM guests
-  WHERE arrival = date('now')
+  WHERE arrival = date('now','-5 hours') 
 `).first();
 
 const sameDayRow = await DB.prepare(`
   SELECT COUNT(*) AS count
   FROM guests
-  WHERE arrival = date('now') AND arrival = created
+  WHERE arrival = date('now','-5 hours')  AND arrival = created
 `).first();
 
 const totalTodayCount = arrivalsTodayRow?.count ?? 0;
@@ -127,7 +127,7 @@ const sameDayPct = pct(sameDayCount, totalTodayCount);
 const departingTodayRow = await DB.prepare(`
   SELECT COUNT(*) AS count
   FROM guests
-  WHERE departure = date('now')
+  WHERE departure = date('now','-5 hours') 
 `).first();
 
 const departingTodayCount = departingTodayRow?.count ?? 0;
