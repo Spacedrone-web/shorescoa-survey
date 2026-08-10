@@ -3,6 +3,10 @@ Astro.response.headers.set("Cache-Control", "no-cache, no-store, must-revalidate
 Astro.response.headers.set("Pragma", "no-cache");
 Astro.response.headers.set("Expires", "0");
 
+// Force SSR to operate in CST/CDT
+const CST_NOW = new Date().toLocaleString("en-US", { timeZone: "America/Chicago" });
+console.log("SSR CST Time:", CST_NOW);
+
 console.log("SSR: status dashboard starting");
 
 import StatusCard from "./StatusCard.astro";
@@ -25,12 +29,12 @@ const lastSync = await DB.prepare(`
 `).first();
 
 // ---------------------------------------------------------
-// CURRENT RENTALS
+// CURRENT RENTALS (CST)
 // ---------------------------------------------------------
 const currentRentals = await DB.prepare(`
   SELECT unit, arrival, departure, created
   FROM guests
-  WHERE arrival <= date('now','-5 hours') AND departure > date('now','-5 hours') 
+  WHERE arrival <= date('now','-5 hours') AND departure > date('now','-5 hours')
 `).all();
 
 // ---------------------------------------------------------
@@ -103,18 +107,18 @@ for (const row of (currentRentals?.results || [])) {
 }
 
 // ---------------------------------------------------------
-// SAME-DAY CHECK-IN
+// SAME-DAY CHECK-IN (CST)
 // ---------------------------------------------------------
 const arrivalsTodayRow = await DB.prepare(`
   SELECT COUNT(*) AS count
   FROM guests
-  WHERE arrival = date('now','-5 hours') 
+  WHERE arrival = date('now','-5 hours')
 `).first();
 
 const sameDayRow = await DB.prepare(`
   SELECT COUNT(*) AS count
   FROM guests
-  WHERE arrival = date('now','-5 hours')  AND arrival = created
+  WHERE arrival = date('now','-5 hours') AND arrival = created
 `).first();
 
 const totalTodayCount = arrivalsTodayRow?.count ?? 0;
@@ -122,23 +126,23 @@ const sameDayCount = sameDayRow?.count ?? 0;
 const sameDayPct = pct(sameDayCount, totalTodayCount);
 
 // ---------------------------------------------------------
-// DEPARTING TODAY
+// DEPARTING TODAY (CST)
 // ---------------------------------------------------------
 const departingTodayRow = await DB.prepare(`
   SELECT COUNT(*) AS count
   FROM guests
-  WHERE departure = date('now','-5 hours') 
+  WHERE departure = date('now','-5 hours')
 `).first();
 
 const departingTodayCount = departingTodayRow?.count ?? 0;
 
 // ---------------------------------------------------------
-// ARRIVING TOMORROW
+// ARRIVING TOMORROW (CST)
 // ---------------------------------------------------------
 const arrivingTomorrowRow = await DB.prepare(`
   SELECT COUNT(*) AS count
   FROM guests
-  WHERE arrival = date('now','+1 day')
+  WHERE arrival = date('now','-5 hours','+1 day')
 `).first();
 
 const arrivingTomorrowCount = arrivingTomorrowRow?.count ?? 0;
@@ -169,7 +173,7 @@ const totalPct = pct(totalRented, totalUnits);
 
 <div style="margin-top: 1.5rem;">
   <p style="margin-bottom: 0.5rem; color:#9ca3af;">
-    Status as of {new Date().toLocaleString("en-US", { timeZone: "America/Denver" })}
+    Status as of {new Date().toLocaleString("en-US", { timeZone: "America/Chicago" })}
   </p>
 
   <p style="margin-bottom: 1.5rem; color:#6b7280; font-size: 0.9rem;">
