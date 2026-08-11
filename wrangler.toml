@@ -3,7 +3,6 @@ compatibility_date = "2024-09-23"
 pages_build_output_dir = "dist"
 
 [limits]
-# Required for Cloudflare Pages
 cpu_ms = 10000
 subrequests = 50000
 
@@ -11,3 +10,8 @@ subrequests = 50000
 binding = "DB"
 database_name = "sop-passes-db"
 database_id = "d4c280b7-ac3e-45cc-bece-cf6181a1ce6d"
+
+[vars]
+CF_ACCOUNT_ID = "a52be91be5549dcbdf38df3d96ccf7e8"
+CF_D1_DB_ID = "d4c280b7-ac3e-45cc-bece-cf6181a1ce6d"
+
