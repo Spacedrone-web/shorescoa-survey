@@ -297,20 +297,20 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
       const sent = g.email_sent === 'yes';
 
       const tr = document.createElement('tr');
-      tr.dataset.id = g.id;
+      tr.dataset.id = g.passId;
 
       tr.innerHTML =
-        '<td><input type="checkbox" class="row-check" data-id="' + g.id + '"' +
+        '<td><input type="checkbox" class="row-check" data-id="' + g.passId + '"' +
         (hasEmail ? '' : ' disabled') + '/></td>' +
         '<td>' + esc(g.guest_name) + '</td>' +
         '<td>' + (hasEmail ? esc(g.email) : '<span class="no-email">no email</span>') + '</td>' +
         '<td>' + esc(g.unit) + '</td>' +
         '<td>' + esc(g.arrival) + '</td>' +
         '<td>' + esc(g.departure) + '</td>' +
-        '<td id="sc-' + g.id + '">' + sentBadge(g.email_sent) + '</td>' +
+        '<td id="sc-' + g.passId + '">' + sentBadge(g.email_sent) + '</td>' +
         '<td>' +
           (hasEmail
-            ? '<button class="send-btn" data-id="' + g.id + '">' +
+            ? '<button class="send-btn" data-id="' + g.passId + '">' +
               (sent ? 'Resend' : 'Send') +
               '</button>'
             : '&mdash;') +
@@ -433,8 +433,8 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
   /* INDIVIDUAL SEND */
   async function onSend(e) {
     const btn = e.currentTarget;
-    const id  = parseInt(btn.dataset.id);
-    const g   = visibleRows.find(r => r.id === id);
+    const id  = btn.dataset.id;
+    const g   = visibleRows.find(r => r.passId === id);
 
     if (!g?.email) return;
 
@@ -459,7 +459,7 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
       await apiJson('/api/guests', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, emailSent: 'yes' })
+        body: JSON.stringify({ passId: id, emailSent: 'yes' })
       });
 
       g.email_sent = 'yes';
@@ -484,7 +484,7 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
     if (!visibleRows.length) return;
 
     const hdr = [
-      'id','guest_name','email','unit',
+      'guest_name','email','unit',
       'arrival','departure','email_sent'
     ];
 
