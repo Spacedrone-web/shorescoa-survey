@@ -88,8 +88,8 @@ function statusLabel(p) {
 //const today = new Date().toISOString().split("T")[0];
 
 // -Access the D1 binding from Astro SSR runtime
-//const env = (locals as any).runtime?.env;
-//const DB  = env?.DB;
+const env = (locals as any).runtime?.env;
+const DB  = env?.DB;
 
 // -Debug: confirm DB binding exists
 //console.log("DEBUG D1 Binding:", DB ? "FOUND" : "NOT FOUND");
