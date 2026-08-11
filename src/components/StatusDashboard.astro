@@ -82,41 +82,26 @@ function statusLabel(p) {
 }
 
 // ---------------------------------------------------------
-//  Est. Total Guests 
+//  Est. Total Guests (Native D1 Binding)
 // ---------------------------------------------------------
 
 const today = new Date().toISOString().split("T")[0];
 
-// These now come from wrangler.toml [vars]
-const accountId  = import.meta.env.CF_ACCOUNT_ID;
-const databaseId = import.meta.env.CF_D1_DB_ID;
-const apiToken   = import.meta.env.CF_API_TOKEN;
+// Access the D1 binding from Astro SSR runtime
+const env = (locals as any).runtime?.env;
+const db  = env?.DB;
 
-// DEBUG: Always print these
-console.log("DEBUG CF_ACCOUNT_ID:", accountId ?? "undefined");
-console.log("DEBUG CF_D1_DB_ID:", databaseId ?? "undefined");
-console.log("DEBUG CF_API_TOKEN:", apiToken ? "SET" : "NOT SET");
+// Debug: confirm DB binding exists
+console.log("DEBUG D1 Binding:", db ? "FOUND" : "NOT FOUND");
 
 let todaysGuestCount = 0;
 
 try {
-  const wristbandResp = await fetch(
-    `https://api.cloudflare.com/client/v4/accounts/${accountId}/d1/database/${databaseId}/query`,
-    {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiToken}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        sql: "SELECT count FROM guest_wristbands WHERE date = ?",
-        params: [today]
-      })
-    }
-  ).then(r => r.json());
+  const result = await db.prepare(
+    "SELECT count FROM guest_wristbands WHERE date = ?"
+  ).bind(today).all();
 
-  todaysGuestCount =
-    wristbandResp?.result?.[0]?.results?.[0]?.count ?? 0;
+  todaysGuestCount = result?.results?.[0]?.count ?? 0;
 
 } catch (err) {
   console.error("Failed to load guest_wristbands:", err);
