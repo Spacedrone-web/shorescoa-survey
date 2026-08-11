@@ -80,6 +80,35 @@ function statusLabel(p) {
   if (p < 85) return "Moderate (Yellow)";
   return "High (Red)";
 }
+// ---------------------------------------------------------
+//  Est. Total Guests
+// ---------------------------------------------------------
+// Today's date (YYYY-MM-DD)
+const today = new Date().toISOString().split("T")[0];
+
+// Query D1 for today's wristband count
+const wristbandResp = await fetch(
+  `https://api.cloudflare.com/client/v4/accounts/${D1_ACCOUNT_ID}/d1/database/${D1_DATABASE_ID}/query`,
+  {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${CF_API_TOKEN}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      sql: "SELECT count FROM guest_wristbands WHERE date = ?",
+      params: [today]
+    })
+  }
+).then(r => r.json());
+
+let todaysGuestCount = 0;
+
+try {
+  todaysGuestCount = wristbandResp.result[0].results[0].count ?? 0;
+} catch {
+  todaysGuestCount = 0;
+}
 
 // ---------------------------------------------------------
 // RENTAL COUNTS
@@ -206,6 +235,6 @@ const totalPct = pct(totalRented, totalUnits);
     <StatusCard label="1 Bedroom" value={`${rentedByType["1 Bedroom"]}/${TOTAL["1 Bedroom"]}`} percent={onePct} status={statusLabel(onePct)} note="Rented / Available" />
     <StatusCard label="2 Bedroom" value={`${rentedByType["2 Bedroom"]}/${TOTAL["2 Bedroom"]}`} percent={twoPct} status={statusLabel(twoPct)} note="Rented / Available" />
     <StatusCard label="3 Bedroom" value={`${rentedByType["3 Bedroom"]}/${TOTAL["3 Bedroom"]}`} percent={threePct} status={statusLabel(threePct)} note="Rented / Available" />
-    <StatusCard label="Total Occupancy" value={`${totalRented}/${totalUnits}`} percent={totalPct} status={statusLabel(totalPct)} note="All rented units vs total" />
+    <StatusCard label="Total Occupancy" value={`${totalRented}/${totalUnits}`} percent={totalPct} status={statusLabel(totalPct)} note="All rented units vs total\nEst. Total guests: ${todaysGuestCount}" />
   </div>
 </div>
