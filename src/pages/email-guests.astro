@@ -293,37 +293,37 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
     bulkBar.style.display = 'flex';
 
     rows.forEach(g => {
-      const hasEmail = !!g.email;
-      const sent = g.email_sent === 'yes';
+	  const hasEmail = !!g.email;
+	  const sent = g.email_sent === 'yes';
 
-      const tr = document.createElement('tr');
-      tr.dataset.id = g.passId;
+	  const tr = document.createElement('tr');
+	  tr.dataset.id = g.passId;   // internal only
 
-      tr.innerHTML =
-        '<td><input type="checkbox" class="row-check" data-id="' + g.passId + '"' +
-        (hasEmail ? '' : ' disabled') + '/></td>' +
-        '<td>' + esc(g.guest_name) + '</td>' +
-        '<td>' + (hasEmail ? esc(g.email) : '<span class="no-email">no email</span>') + '</td>' +
-        '<td>' + esc(g.unit) + '</td>' +
-        '<td>' + esc(g.arrival) + '</td>' +
-        '<td>' + esc(g.departure) + '</td>' +
-        '<td id="sc-' + g.passId + '">' + sentBadge(g.email_sent) + '</td>' +
-        '<td>' +
-          (hasEmail
-            ? '<button class="send-btn" data-id="' + g.passId + '">' +
-              (sent ? 'Resend' : 'Send') +
-              '</button>'
-            : '&mdash;') +
-        '</td>';
+	  tr.innerHTML =
+		'<td><input type="checkbox" class="row-check" data-id="' + g.passId + '"' +
+		(hasEmail ? '' : ' disabled') + '/></td>' +
+		'<td>' + esc(g.guest_name) + '</td>' +
+		'<td>' + (hasEmail ? esc(g.email) : '<span class="no-email">no email</span>') + '</td>' +
+		'<td>' + esc(g.unit) + '</td>' +
+		'<td>' + esc(g.arrival) + '</td>' +
+		'<td>' + esc(g.departure) + '</td>' +
+		'<td id="sc-' + g.passId + '">' + sentBadge(g.email_sent) + '</td>' +
+		'<td>' +
+		  (hasEmail
+			? '<button class="send-btn" data-id="' + g.passId + '">' +
+			  (sent ? 'Resend' : 'Send') +
+			  '</button>'
+			: '&mdash;') +
+		'</td>';
 
-      guestBody.appendChild(tr);
-    });
+	  guestBody.appendChild(tr);
+	});
 
-    document.querySelectorAll('.row-check')
-      .forEach(c => c.addEventListener('change', updateSel));
+	document.querySelectorAll('.row-check')
+	  .forEach(c => c.addEventListener('change', updateSel));
 
-    document.querySelectorAll('.send-btn')
-      .forEach(b => b.addEventListener('click', onSend));
+	document.querySelectorAll('.send-btn')
+	  .forEach(b => b.addEventListener('click', onSend));
 
     selectAll.checked = false;
     selectAllHead.checked = false;
@@ -386,125 +386,126 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
 
   /* MARK SELECTED AS SENT */
   markSentBtn.addEventListener('click', async () => {
-    const checked = document.querySelectorAll('.row-check:checked');
-    if (!checked.length) return;
+	  const checked = document.querySelectorAll('.row-check:checked');
+	  if (!checked.length) return;
 
-    markSentBtn.disabled = true;
-    markSentBtn.textContent = 'Marking…';
+	  markSentBtn.disabled = true;
+	  markSentBtn.textContent = 'Marking…';
 
-    let done = 0, failed = 0;
+	  let done = 0, failed = 0;
 
-    for (const c of checked) {
-      const id = c.dataset.id;
-      const g  = visibleRows.find(r => r.passId === id);
-      if (!g) continue;
+	  for (const c of checked) {
+		const id = c.dataset.id;   // UUID string
+		const g  = visibleRows.find(r => r.passId === id);
+		if (!g) continue;
 
-      try {
-        await apiJson('/api/guests', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ passId: id, emailSent: 'yes' })
-        });
+		try {
+		  await apiJson('/api/guests', {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ passId: id, emailSent: 'yes' })
+		  });
 
-        g.email_sent = 'yes';
-        const cell = $('sc-' + id);
-        if (cell) cell.innerHTML = sentBadge('yes');
-        done++;
+		  g.email_sent = 'yes';
+		  const cell = $('sc-' + id);
+		  if (cell) cell.innerHTML = sentBadge('yes');
+		  done++;
 
-      } catch {
-        failed++;
-      }
-    }
+		} catch {
+		  failed++;
+		}
+	  }
 
-    updateNavBadges();
-    markSentBtn.innerHTML = '✓ Mark Selected as Sent';
-    markSentBtn.disabled = false;
+	  updateNavBadges();
+	  markSentBtn.innerHTML = '✓ Mark Selected as Sent';
+	  markSentBtn.disabled = false;
 
-    statusBar.innerHTML =
-      '✓ Marked <strong>' + done + '</strong> guest' +
-      (done !== 1 ? 's' : '') + ' as sent' +
-      (failed ? ' <span class="err">(' + failed + ' failed)</span>' : '') + '.';
+	  statusBar.innerHTML =
+		'✓ Marked <strong>' + done + '</strong> guest' +
+		(done !== 1 ? 's' : '') + ' as sent' +
+		(failed ? ' <span class="err">(' + failed + ' failed)</span>' : '') + '.';
 
-    syncChecks(false);
-    selectAll.checked = false;
-    selectAllHead.checked = false;
-  });
+	  syncChecks(false);
+	  selectAll.checked = false;
+	  selectAllHead.checked = false;
+	});
 
   /* INDIVIDUAL SEND */
   async function onSend(e) {
-    const btn = e.currentTarget;
-    const id  = btn.dataset.id;
-    const g   = visibleRows.find(r => r.passId === id);
+	  const btn = e.currentTarget;
+	  const id  = btn.dataset.id;   // UUID string
+	  const g   = visibleRows.find(r => r.passId === id);
 
-    if (!g?.email) return;
+	  if (!g?.email) return;
 
-    btn.disabled = true;
-    btn.textContent = 'Sending…';
+	  btn.disabled = true;
+	  btn.textContent = 'Sending…';
 
-    try {
-      const d = await apiJson('/api/send-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: g.email,
-          name: g.guest_name,
-          unit: g.unit,
-          arrival: g.arrival,
-          departure: g.departure
-        })
-      });
+	  try {
+		const d = await apiJson('/api/send-email', {
+		  method: 'POST',
+		  headers: { 'Content-Type': 'application/json' },
+		  body: JSON.stringify({
+			to: g.email,
+			name: g.guest_name,
+			unit: g.unit,
+			arrival: g.arrival,
+			departure: g.departure
+		  })
+		});
 
-      if (!d.ok) throw new Error(d.error || 'Send failed');
+		if (!d.ok) throw new Error(d.error || 'Send failed');
 
-      await apiJson('/api/guests', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ passId: id, emailSent: 'yes' })
-      });
+		await apiJson('/api/guests', {
+		  method: 'PATCH',
+		  headers: { 'Content-Type': 'application/json' },
+		  body: JSON.stringify({ passId: id, emailSent: 'yes' })
+		});
 
-      g.email_sent = 'yes';
-      const cell = $('sc-' + id);
-      if (cell) cell.innerHTML = sentBadge('yes');
+		g.email_sent = 'yes';
+		const cell = $('sc-' + id);
+		if (cell) cell.innerHTML = sentBadge('yes');
 
-      btn.textContent = '✓ Sent';
-      btn.disabled = false;
-      updateNavBadges();
+		btn.textContent = '✓ Sent';
+		btn.disabled = false;
+		updateNavBadges();
 
-    } catch(err) {
-      btn.textContent = 'Retry';
-      btn.disabled = false;
-      statusBar.innerHTML =
-        '<span class="err">Send failed for ' + esc(g.email) + ': ' +
-        esc(err.message) + '</span>';
-    }
-  }
+	  } catch(err) {
+		btn.textContent = 'Retry';
+		btn.disabled = false;
+		statusBar.innerHTML =
+		  '<span class="err">Send failed for ' + esc(g.email) + ': ' +
+		  esc(err.message) + '</span>';
+	  }
+	}
 
   /* DOWNLOAD CSV */
-  exportCsvBtn.addEventListener('click', () => {
-    if (!visibleRows.length) return;
+	exportCsvBtn.addEventListener('click', () => {
+	  if (!visibleRows.length) return;
 
-    const hdr = [
-      'guest_name','email','unit',
-      'arrival','departure','email_sent'
-    ];
+	  const hdr = [
+		'guest_name','email','unit',
+		'arrival','departure','email_sent'
+	  ];
 
-    const lines = [
-      '\ufeff' + hdr.join(','),  // BOM for Excel
-      ...visibleRows.map(g =>
-        hdr.map(h => '"' + String(g[h] ?? '').replace(/"/g,'""') + '"').join(',')
-      )
-    ];
+	  const lines = [
+		'\ufeff' + hdr.join(','),  // BOM for Excel
+		...visibleRows.map(g =>
+		  hdr.map(h => '"' + String(g[h] ?? '').replace(/"/g,'""') + '"').join(',')
+		)
+	  ];
 
-    const blob = new Blob([lines.join('\r\n')], {
-      type: 'text/csv;charset=utf-8'
-    });
+	  const blob = new Blob([lines.join('\r\n')], {
+		type: 'text/csv;charset=utf-8'
+	  });
 
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'shores-guests-' +
-      new Date().toISOString().slice(0,10) + '.csv';
-    a.click();
-  });
+	  const a = document.createElement('a');
+	  a.href = URL.createObjectURL(blob);
+	  a.download = 'shores-guests-' +
+		new Date().toISOString().slice(0,10) + '.csv';
+	  a.click();
+	});
+
   /* TEST EMAIL MODAL */
   testBtn.addEventListener('click', () => {
     testEmailInput.value = '';
