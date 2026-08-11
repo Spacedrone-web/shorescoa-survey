@@ -17,16 +17,17 @@ export async function GET({ cookies, locals }: APIContext) {
   if (!DB) return j({ ok: false, error: 'DB binding missing' }, 500);
 
   try {
-    // Safety net — create tables if they don't exist yet
+    // Correct table definition
     await DB.prepare(`
       CREATE TABLE IF NOT EXISTS guests (
-        id         INTEGER PRIMARY KEY AUTOINCREMENT,
-        guest_name TEXT,
-        email      TEXT,
-        arrival    TEXT,
-        departure  TEXT,
-        unit       TEXT,
-        email_sent TEXT DEFAULT 'no'
+        passId      TEXT PRIMARY KEY,
+        guest_name  TEXT,
+        email       TEXT,
+        unit        TEXT,
+        created     TEXT,
+        arrival     TEXT,
+        departure   TEXT,
+        email_sent  TEXT DEFAULT 'no'
       )
     `).run();
 
@@ -39,8 +40,9 @@ export async function GET({ cookies, locals }: APIContext) {
 
     // Fetch all guests
     const { results: guests } = await DB.prepare(
-      `SELECT id, guest_name, email, arrival, departure, unit, email_sent
-       FROM guests ORDER BY departure DESC, guest_name ASC`
+      `SELECT passId, guest_name, email, arrival, departure, unit, email_sent
+       FROM guests
+       ORDER BY departure DESC, guest_name ASC`
     ).all();
 
     // Fetch last_synced timestamp
@@ -50,7 +52,6 @@ export async function GET({ cookies, locals }: APIContext) {
 
     const lastSynced: string | null = metaRow?.value ?? null;
 
-    // FIXED: remove duplicate key
     return j({
       ok: true,
       lastSynced,
@@ -71,9 +72,17 @@ export async function PATCH({ request, cookies, locals }: APIContext) {
   if (!DB) return j({ ok: false, error: 'DB binding missing' }, 500);
 
   try {
-    const { id, emailSent } = await request.json() as { id: number; emailSent: string };
-    await DB.prepare(`UPDATE guests SET email_sent = ? WHERE id = ?`).bind(emailSent, id).run();
+    const { passId, emailSent } = await request.json() as {
+      passId: string;
+      emailSent: string;
+    };
+
+    await DB.prepare(
+      `UPDATE guests SET email_sent = ? WHERE passId = ?`
+    ).bind(emailSent, passId).run();
+
     return j({ ok: true });
+
   } catch (err: any) {
     return j({ ok: false, error: String(err?.message ?? err) }, 500);
   }
