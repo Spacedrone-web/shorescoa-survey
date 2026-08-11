@@ -90,6 +90,11 @@ const accountId = import.meta.env.CF_ACCOUNT_ID;
 const databaseId = import.meta.env.CF_D1_DB_ID;
 const apiToken = import.meta.env.CF_API_TOKEN;
 
+// DEBUG: Always print these
+console.log("DEBUG CF_ACCOUNT_ID:", accountId);
+console.log("DEBUG CF_D1_DB_ID:", databaseId);
+console.log("DEBUG CF_API_TOKEN:", apiToken ? "SET" : "NOT SET");
+
 let todaysGuestCount = 0;
 
 try {
@@ -115,6 +120,7 @@ try {
   console.error("Failed to load guest_wristbands:", err);
   todaysGuestCount = 0;
 }
+
 
 // ---------------------------------------------------------
 // RENTAL COUNTS
