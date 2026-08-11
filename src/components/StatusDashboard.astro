@@ -241,6 +241,6 @@ const totalPct = pct(totalRented, totalUnits);
     <StatusCard label="1 Bedroom" value={`${rentedByType["1 Bedroom"]}/${TOTAL["1 Bedroom"]}`} percent={onePct} status={statusLabel(onePct)} note="Rented / Available" />
     <StatusCard label="2 Bedroom" value={`${rentedByType["2 Bedroom"]}/${TOTAL["2 Bedroom"]}`} percent={twoPct} status={statusLabel(twoPct)} note="Rented / Available" />
     <StatusCard label="3 Bedroom" value={`${rentedByType["3 Bedroom"]}/${TOTAL["3 Bedroom"]}`} percent={threePct} status={statusLabel(threePct)} note="Rented / Available" />
-    <StatusCard label="Total Occupancy" value={`${totalRented}/${totalUnits}`} percent={totalPct} status={statusLabel(totalPct)} note="All rented units vs total\n Est. Total guests: ${todaysGuestCount}" />
+    <StatusCard label="Total Occupancy" value={`${totalRented}/${totalUnits/${todaysGuestCount}}`} percent={totalPct} status={statusLabel(totalPct)} note="All rented units vs total\n Est. Total guests: ${todaysGuestCount}" />
   </div>
 </div>
