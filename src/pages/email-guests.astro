@@ -358,7 +358,7 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
 
     checked.forEach(c => {
       const id = parseInt(c.dataset.id);
-      const g  = visibleRows.find(r => r.id === id);
+      const g  = visibleRows.find(r => r.passId === id);
       if (g && g.email) emails.push(g.email);
     });
 
@@ -395,15 +395,15 @@ td{padding:.55rem .75rem;border-bottom:1px solid #e2e8f0;vertical-align:middle}
     let done = 0, failed = 0;
 
     for (const c of checked) {
-      const id = parseInt(c.dataset.id);
-      const g  = visibleRows.find(r => r.id === id);
+      const id = c.dataset.id;
+      const g  = visibleRows.find(r => r.passId === id);
       if (!g) continue;
 
       try {
         await apiJson('/api/guests', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, emailSent: 'yes' })
+          body: JSON.stringify({ passId: id, emailSent: 'yes' })
         });
 
         g.email_sent = 'yes';
