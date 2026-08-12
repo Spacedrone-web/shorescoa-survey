@@ -85,28 +85,28 @@ function statusLabel(p) {
 //  Est. Total Guests (Native D1 Binding)
 // ---------------------------------------------------------
 
-//const today = new Date().toISOString().split("T")[0];
+const today = new Date().toISOString().split("T")[0];
 
 // -Access the D1 binding from Astro SSR runtime
 //const env = (Astro.locals as any).runtime?.env;
 //const DB  = env?.DB;
 
 // -Debug: confirm DB binding exists
-//console.log("DEBUG D1 Binding:", DB ? "FOUND" : "NOT FOUND");
+console.log("DEBUG D1 Binding:", DB ? "FOUND" : "NOT FOUND");
 
-//let todaysGuestCount = 0;
+let todaysGuestCount = 0;
 
-//try {
-//  const result = await DB.prepare(
-//    "SELECT count FROM guest_wristbands WHERE date = ?"
-//  ).bind(today).all();
+try {
+  const result = await DB.prepare(
+    "SELECT count FROM guest_wristbands WHERE date = ?"
+  ).bind(today).all();
 
-//  todaysGuestCount = result?.results?.[0]?.count ?? 0;
+  todaysGuestCount = result?.results?.[0]?.count ?? 0;
 
-//} catch (err) {
-//  console.error("Failed to load guest_wristbands:", err);
-//  todaysGuestCount = 0;
-//}
+} catch (err) {
+  console.error("Failed to load guest_wristbands:", err);
+  todaysGuestCount = 0;
+}
 
 // ---------------------------------------------------------
 // RENTAL COUNTS
@@ -145,7 +145,7 @@ const arrivalsTodayRow = await DB.prepare(`
 const sameDayRow = await DB.prepare(`
   SELECT COUNT(*) AS count
   FROM guests
-  WHERE arrival = date('now','-5 hours') AND arrival = created
+  WHERE arrival = date('now','-5 hours') AND arrival = date(created)
 `).first();
 
 const totalTodayCount = arrivalsTodayRow?.count ?? 0;
