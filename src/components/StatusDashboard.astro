@@ -12,8 +12,8 @@ console.log("SSR: status dashboard starting");
 import StatusCard from "./StatusCard.astro";
 import DEDICATED from "../lib/dedicated.json";
 
-// const env = (Astro.locals as any).runtime?.env ?? {};
-// const DB = env.DB;
+const env = (Astro.locals as any).runtime?.env ?? {};
+const DB = env.DB;
 
 console.log("DB binding:", !!DB);
 if (!DB) throw new Error("DB binding not available");
@@ -88,8 +88,8 @@ function statusLabel(p) {
 //const today = new Date().toISOString().split("T")[0];
 
 // -Access the D1 binding from Astro SSR runtime
-const env = (locals as any).runtime?.env;
-const DB  = env?.DB;
+//const env = (locals as any).runtime?.env;
+//const DB  = env?.DB;
 
 // -Debug: confirm DB binding exists
 //console.log("DEBUG D1 Binding:", DB ? "FOUND" : "NOT FOUND");
