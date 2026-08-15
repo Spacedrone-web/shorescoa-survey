@@ -8,32 +8,45 @@ const { label, value, percent, status, note, managers } = Astro.props;
   border-radius: 0.5rem;
   color: white;
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 1.5rem;
 ">
-  <h3 style="font-size: 1.1rem; font-weight: 600;">
-    {label}
-  </h3>
 
-  <p style="font-size: 1.4rem; font-weight: 700;">
-    {value}
-  </p>
+  <!-- LEFT SIDE: Main Stats -->
+  <div style="display: flex; flex-direction: column; gap: 0.5rem; flex: 2;">
+    <h3 style="font-size: 1.1rem; font-weight: 600;">
+      {label}
+    </h3>
 
-  <p style="color: #9ca3af;">
-    {percent.toFixed(1)}%
-  </p>
+    <p style="font-size: 1.4rem; font-weight: 700;">
+      {value}
+    </p>
 
-  <p style="font-size: 0.9rem; color: #d1d5db;">
-    {status}
-  </p>
+    <p style="color: #9ca3af;">
+      {percent.toFixed(1)}%
+    </p>
 
-  <p style="font-size: 0.8rem; color: #9ca3af;">
-    {note}
-  </p>
+    <p style="font-size: 0.9rem; color: #d1d5db;">
+      {status}
+    </p>
 
+    <p style="font-size: 0.8rem; color: #9ca3af;">
+      {note}
+    </p>
+  </div>
+
+  <!-- RIGHT SIDE: Manager List -->
   {managers && managers.length > 0 && (
-    <div style="margin-top: 0.75rem; border-top: 1px solid #374151; padding-top: 0.75rem;">
-      <h4 style="font-size: 0.9rem; color:#d1d5db; margin-bottom: 0.5rem;">
+    <div style="
+      flex: 1;
+      border-left: 1px solid #374151;
+      padding-left: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    ">
+      <h4 style="font-size: 0.9rem; color:#d1d5db; margin-bottom: 0.25rem;">
         Managers
       </h4>
 
@@ -46,4 +59,3 @@ const { label, value, percent, status, note, managers } = Astro.props;
   )}
 
 </div>
-
