@@ -11,6 +11,12 @@ const { label, value, percent, status, note, managers } = Astro.props;
   flex-direction: row;
   justify-content: space-between;
   gap: 1.5rem;
+
+  /* ⭐ MAKE THE CARD WIDER */
+  min-width: 600px;
+
+  /* ⭐ PREVENT MANAGER NAMES FROM WRAPPING */
+  white-space: nowrap;
 ">
 
   <!-- LEFT SIDE: Main Stats -->
@@ -45,12 +51,15 @@ const { label, value, percent, status, note, managers } = Astro.props;
       display: flex;
       flex-direction: column;
       gap: 0.25rem;
+
+      /* ⭐ PREVENT WRAPPING IN MANAGER COLUMN */
+      white-space: nowrap;
     ">
       <h4 style="font-size: 0.9rem; color:#d1d5db; margin-bottom: 0.25rem;">
         Managers
       </h4>
 
-      <ul style="font-size: 0.85rem; color:#9ca3af; line-height: 1.4; padding-left: 1rem;">
+      <ul style="font-size: 0.85rem; color:#9ca3af; line-height: 1.4; padding-left: 1rem; margin: 0;">
         {managers.map(m => (
           <li>{m.label}</li>
         ))}
