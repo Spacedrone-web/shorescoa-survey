@@ -73,8 +73,11 @@ const { label, value, percent, status, note, managers } = Astro.props;
       white-space: nowrap;
     ">
       <h4 style="font-size: 0.9rem; color:#d1d5db; margin-bottom: 0.25rem;">
-        Managers
+        {label === "Same-Day Check-ins" && "Top Offenders"}
+        {label === "Total Occupancy" && "Top Performers"}
+        {label !== "Same-Day Check-ins" && label !== "Total Occupancy" && "Managers"}
       </h4>
+
 
       <ul style="
         font-size: 0.85rem;
