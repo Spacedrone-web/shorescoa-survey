@@ -84,15 +84,8 @@ function statusLabel(p) {
 // ---------------------------------------------------------
 //  Est. Total Guests (Native D1 Binding)
 // ---------------------------------------------------------
-
-// const today = new Date().toISOString().split("T")[0];
 const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
 
-// -Access the D1 binding from Astro SSR runtime
-//const env = (Astro.locals as any).runtime?.env;
-//const DB  = env?.DB;
-
-// -Debug: confirm DB binding exists
 console.log("DEBUG D1 Binding:", DB ? "FOUND" : "NOT FOUND");
 
 let todaysGuestCount = 0;
@@ -154,6 +147,22 @@ const sameDayCount = sameDayRow?.count ?? 0;
 const sameDayPct = pct(sameDayCount, totalTodayCount);
 
 // ---------------------------------------------------------
+// SAME-DAY CHECK-IN BY MANAGER (Top 5, excluding Self Managed)
+// ---------------------------------------------------------
+const sameDayManagers = await DB.prepare(`
+  SELECT 
+    invitedBy_companyName AS manager,
+    COUNT(*) AS same_day_checkins
+  FROM guests
+  WHERE arrival = date('now','-5 hours')
+    AND arrival = date(created)
+    AND invitedBy_companyName NOT LIKE '%Self Managed%'
+  GROUP BY manager
+  ORDER BY same_day_checkins DESC
+  LIMIT 5;
+`).all();
+
+// ---------------------------------------------------------
 // DEPARTING TODAY (CST)
 // ---------------------------------------------------------
 const departingTodayRow = await DB.prepare(`
@@ -197,8 +206,46 @@ const totalUnits =
   TOTAL["3 Bedroom"];
 
 const totalPct = pct(totalRented, totalUnits);
----
 
+// ---------------------------------------------------------
+// MANAGER OCCUPANCY % (≥ 6 units, Top 5)
+// ---------------------------------------------------------
+const managerOccupancy = await DB.prepare(`
+  WITH managed AS (
+    SELECT 
+      invitedBy_companyName AS manager,
+      COUNT(DISTINCT unit) AS total_units
+    FROM guests
+    WHERE invitedBy_companyName NOT LIKE '%Self Managed%'
+    GROUP BY invitedBy_companyName
+    HAVING total_units >= 6
+  )
+  SELECT
+    managed.manager,
+    managed.total_units,
+    (
+      SELECT COUNT(DISTINCT unit)
+      FROM guests
+      WHERE arrival <= DATE('now','-5 hours')
+        AND departure >= DATE('now','-5 hours')
+        AND invitedBy_companyName = managed.manager
+    ) AS rented_today,
+    ROUND(
+      (
+        SELECT COUNT(DISTINCT unit)
+        FROM guests
+        WHERE arrival <= DATE('now','-5 hours')
+          AND departure >= DATE('now','-5 hours')
+          AND invitedBy_companyName = managed.manager
+      ) * 1.0 / managed.total_units * 100,
+      2
+    ) AS occupancy_pct
+  FROM managed
+  ORDER BY occupancy_pct DESC
+  LIMIT 5;
+`).all();
+
+---
 <div style="margin-top: 1.5rem;">
   <p style="margin-bottom: 0.5rem; color:#9ca3af;">
     Status as of {new Date().toLocaleString("en-US", { timeZone: "America/Chicago" })}
@@ -219,7 +266,7 @@ const totalPct = pct(totalRented, totalUnits);
     failed: {lastSync?.failed ?? 0}
   </p>
 
-  <div>
+  <div
     style="
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -235,5 +282,30 @@ const totalPct = pct(totalRented, totalUnits);
     <StatusCard label="2 Bedroom" value={`${rentedByType["2 Bedroom"]}/${TOTAL["2 Bedroom"]}`} percent={twoPct} status={statusLabel(twoPct)} note="Rented / Available" />
     <StatusCard label="3 Bedroom" value={`${rentedByType["3 Bedroom"]}/${TOTAL["3 Bedroom"]}`} percent={threePct} status={statusLabel(threePct)} note="Rented / Available" />
     <StatusCard label="Total Occupancy" value={`${totalRented}/${totalUnits}/${todaysGuestCount}`} percent={totalPct} status={statusLabel(totalPct)} note="Rented / Available / Est Guests" />
+
+    <!-- NEW MANAGER CARDS -->
+    <StatusCard 
+      label="Manager Occupancy (Top 5)"
+      value=""
+      percent={0}
+      status="Info"
+      note="Managers with ≥ 6 units"
+      managers={managerOccupancy.results.map(m => ({
+        label: m.manager,
+        value: `${m.occupancy_pct}%`
+      }))}
+    />
+
+    <StatusCard 
+      label="Same-Day Check-ins (Top 5 Managers)"
+      value=""
+      percent={0}
+      status="Info"
+      note="Excludes Self Managed"
+      managers={sameDayManagers.results.map(m => ({
+        label: m.manager,
+        value: m.same_day_checkins
+      }))}
+    />
   </div>
 </div>
