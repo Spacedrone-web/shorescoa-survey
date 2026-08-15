@@ -347,9 +347,12 @@ const managerOccupancy = await DB.prepare(`
     status={statusLabel(totalPct)}
     note="Rented / Available / Est Guests"
     managers={managerOccupancy.results.map(m => ({
-      label: m.manager
+      label: m.manager,
+      total: m.total_units,
+      rented: m.rented_today
     }))}
-  />
+   />
+
 </div>
 
 </div>

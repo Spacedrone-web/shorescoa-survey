@@ -20,12 +20,6 @@ const { label, value, percent, status, note, managers } = Astro.props;
   <div style="
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-
-  <!-- LEFT SIDE: Main Stats -->
-  <div style="
-    display: flex;
-    flex-direction: column;
 
     /* ⭐ REMOVE GAPS COMPLETELY */
     gap: 0rem;
@@ -54,7 +48,6 @@ const { label, value, percent, status, note, managers } = Astro.props;
     </p>
   </div>
 
-
   <!-- RIGHT SIDE: Manager List -->
   {managers && managers.length > 0 && (
     <div style="
@@ -78,18 +71,13 @@ const { label, value, percent, status, note, managers } = Astro.props;
         {label !== "Same-Day Check-ins" && label !== "Total Occupancy" && "Managers"}
       </h4>
 
-
-      <ul style="
-        font-size: 0.85rem;
-        color:#9ca3af;
-        line-height: 1.4;
-        padding-left: 1rem;
-        margin: 0;
-      ">
-        {managers.map(m => (
-          <li>{m.label}</li>
-        ))}
-      </ul>
+      {managers.map(m => (
+        <li style="list-style: none; padding-left: 0;">
+          {label === "Total Occupancy"
+            ? `(${m.total}/${m.rented}) ${m.label}`
+            : m.label}
+        </li>
+      ))}
     </div>
   )}
 
