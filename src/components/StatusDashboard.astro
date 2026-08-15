@@ -85,7 +85,8 @@ function statusLabel(p) {
 //  Est. Total Guests (Native D1 Binding)
 // ---------------------------------------------------------
 
-const today = new Date().toISOString().split("T")[0];
+// const today = new Date().toISOString().split("T")[0];
+const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
 
 // -Access the D1 binding from Astro SSR runtime
 //const env = (Astro.locals as any).runtime?.env;
