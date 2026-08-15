@@ -1,53 +1,18 @@
-// ---------------------------------------------------------
-// SAME-DAY CHECK-IN BY MANAGER (Top 5, excluding Self Managed)
-// ---------------------------------------------------------
-const sameDayManagers = await DB.prepare(`
-  SELECT 
-    invitedBy_companyName AS manager,
-    COUNT(*) AS same_day_checkins
-  FROM guests
-  WHERE arrival = date('now','-5 hours')
-    AND arrival = date(created)
-    AND invitedBy_companyName NOT LIKE '%Self Managed%'
-  GROUP BY manager
-  ORDER BY same_day_checkins DESC
-  LIMIT 5;
-`).all();
+---
+import StatusDashboard from "../components/StatusDashboard.astro";
 
-// ---------------------------------------------------------
-// MANAGER OCCUPANCY % (≥ 6 units, Top 5)
-// ---------------------------------------------------------
-const managerOccupancy = await DB.prepare(`
-  WITH managed AS (
-    SELECT 
-      invitedBy_companyName AS manager,
-      COUNT(DISTINCT unit) AS total_units
-    FROM guests
-    WHERE invitedBy_companyName NOT LIKE '%Self Managed%'
-    GROUP BY invitedBy_companyName
-    HAVING total_units >= 6
-  )
-  SELECT
-    managed.manager,
-    managed.total_units,
-    (
-      SELECT COUNT(DISTINCT unit)
-      FROM guests
-      WHERE arrival <= DATE('now','-5 hours')
-        AND departure >= DATE('now','-5 hours')
-        AND invitedBy_companyName = managed.manager
-    ) AS rented_today,
-    ROUND(
-      (
-        SELECT COUNT(DISTINCT unit)
-        FROM guests
-        WHERE arrival <= DATE('now','-5 hours')
-          AND departure >= DATE('now','-5 hours')
-          AND invitedBy_companyName = managed.manager
-      ) * 1.0 / managed.total_units * 100,
-      2
-    ) AS occupancy_pct
-  FROM managed
-  ORDER BY occupancy_pct DESC
-  LIMIT 5;
-`).all();
+const PASSWORD = "Shores9900!";
+let ok = false;
+
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  ok = form.get("pw") === PASSWORD;
+}
+---
+
+<html>
+  <body>
+    {!ok && (password form)}
+    {ok && <StatusDashboard />}
+  </body>
+</html>
