@@ -222,7 +222,7 @@ const totalPct = pct(totalRented, totalUnits);
   <div
     style="
       display: grid;
-      grid-template-columns: repeat(3, minmax(450px, 1fr));
+      grid-template-columns: repeat(3, minmax(500px, 1fr));
       gap: 1.5rem;
       width: 100%;
       max-width: 1800px;

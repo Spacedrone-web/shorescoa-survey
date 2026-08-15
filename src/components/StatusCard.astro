@@ -12,12 +12,19 @@ const { label, value, percent, status, note, managers } = Astro.props;
   justify-content: space-between;
   gap: 1.5rem;
 
-  /* ⭐ match old width */
-  min-width: 450px;
+  /* ⭐ Wider card like the old layout */
+  min-width: 500px;
 ">
 
-  <!-- LEFT SIDE -->
-  <div style="display: flex; flex-direction: column; gap: 0.5rem; flex: 2;">
+  <!-- LEFT SIDE: Main Stats -->
+  <div style="
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+
+    /* ⭐ Give the left side more room */
+    flex: 3;
+  ">
     <h3 style="font-size: 1.1rem; font-weight: 600;">
       {label}
     </h3>
@@ -39,21 +46,34 @@ const { label, value, percent, status, note, managers } = Astro.props;
     </p>
   </div>
 
-  <!-- RIGHT SIDE -->
+  <!-- RIGHT SIDE: Manager List -->
   {managers && managers.length > 0 && (
     <div style="
+      /* ⭐ Narrower manager column */
       flex: 1;
+
+      /* ⭐ Move divider LEFT */
       border-left: 1px solid #374151;
-      padding-left: 1rem;
+      padding-left: 0.75rem;
+
       display: flex;
       flex-direction: column;
       gap: 0.25rem;
+
+      /* ⭐ Prevent wrapping */
+      white-space: nowrap;
     ">
       <h4 style="font-size: 0.9rem; color:#d1d5db; margin-bottom: 0.25rem;">
         Managers
       </h4>
 
-      <ul style="font-size: 0.85rem; color:#9ca3af; line-height: 1.4; padding-left: 1rem; margin: 0;">
+      <ul style="
+        font-size: 0.85rem;
+        color:#9ca3af;
+        line-height: 1.4;
+        padding-left: 1rem;
+        margin: 0;
+      ">
         {managers.map(m => (
           <li>{m.label}</li>
         ))}
