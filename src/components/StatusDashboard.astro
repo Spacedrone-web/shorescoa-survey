@@ -287,7 +287,7 @@ const managerOccupancy = await DB.prepare(`
     percent={sameDayPct}
     status={statusLabel(sameDayPct)}
     note="Arrival date matches created date"
-    Top offenders={sameDayManagers.results.map(m => ({
+    managers={sameDayManagers.results.map(m => ({
       label: m.manager
     }))}
   />
@@ -346,7 +346,7 @@ const managerOccupancy = await DB.prepare(`
     percent={totalPct}
     status={statusLabel(totalPct)}
     note="Rented / Available / Est Guests"
-    Top Performers={managerOccupancy.results.map(m => ({
+    managers={managerOccupancy.results.map(m => ({
       label: m.manager
     }))}
   />
