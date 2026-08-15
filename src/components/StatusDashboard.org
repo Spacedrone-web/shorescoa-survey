@@ -222,10 +222,14 @@ const totalPct = pct(totalRented, totalUnits);
   <div
     style="
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(450px, 1fr));
       gap: 1.5rem;
+      width: 100%;
+      max-width: 1800px;
+      margin: 0 auto;
     "
   >
+
     <StatusCard label="Yellow Parking" value={`${yellowUsed}/${yellowTotal}`} percent={yellowPct} status={statusLabel(yellowPct)} note="Yellow spaces in use, Does not accout for BB or Staff" />
     <StatusCard label="Same-Day Check-ins" value={`${sameDayCount}/${totalTodayCount}`} percent={sameDayPct} status={statusLabel(sameDayPct)} note="Arrival date matches created date" />
     <StatusCard label="Departing Today" value={`${departingTodayCount}`} percent={0} status="Info" note="Guests leaving today" />
