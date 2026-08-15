@@ -22,29 +22,38 @@ const { label, value, percent, status, note, managers } = Astro.props;
     flex-direction: column;
     gap: 0.5rem;
 
-    /* ⭐ Give the left side more room */
-    flex: 3;
+  <!-- LEFT SIDE: Main Stats -->
+  <div style="
+    display: flex;
+    flex-direction: column;
+
+    /* ⭐ REMOVE GAPS COMPLETELY */
+    gap: 0rem;
+
+    /* ⭐ Keep left side wide */
+    flex: 4;
   ">
-    <h3 style="font-size: 1.1rem; font-weight: 600;">
+    <h3 style="font-size: 1.1rem; font-weight: 600; margin: 0;">
       {label}
     </h3>
 
-    <p style="font-size: 1.4rem; font-weight: 700;">
+    <p style="font-size: 1.4rem; font-weight: 700; margin: 0;">
       {value}
     </p>
 
-    <p style="color: #9ca3af;">
+    <p style="color: #9ca3af; margin: 0;">
       {percent.toFixed(1)}%
     </p>
 
-    <p style="font-size: 0.9rem; color: #d1d5db;">
+    <p style="font-size: 0.9rem; color: #d1d5db; margin: 0;">
       {status}
     </p>
 
-    <p style="font-size: 0.8rem; color: #9ca3af;">
+    <p style="font-size: 0.8rem; color: #9ca3af; margin: 0;">
       {note}
     </p>
   </div>
+
 
   <!-- RIGHT SIDE: Manager List -->
   {managers && managers.length > 0 && (
