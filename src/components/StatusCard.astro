@@ -1,40 +1,49 @@
 ---
-const { label, value, percent, status, note } = Astro.props;
-
-// Status color
-let color = "#22c55e"; // green
-if (percent >= 60 && percent < 85) color = "#eab308"; // yellow
-if (percent >= 85) color = "#ef4444"; // red
+const { label, value, percent, status, note, managers } = Astro.props;
 ---
 
-<div
-  style="
-    background:#1f2937;
-    border-radius:10px;
-    padding:16px;
-    color:#f9fafb;
-    box-shadow:0 2px 6px rgba(0,0,0,0.25);
-  "
->
-  <div style="font-size:16px; font-weight:600; margin-bottom:6px;">
+<div style="
+  background: #1f2937;
+  padding: 1rem 1.25rem;
+  border-radius: 0.5rem;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+">
+  <h3 style="font-size: 1.1rem; font-weight: 600;">
     {label}
-  </div>
+  </h3>
 
-  <div style="font-size:26px; font-weight:700; margin-bottom:4px;">
+  <p style="font-size: 1.4rem; font-weight: 700;">
     {value}
-  </div>
+  </p>
 
-  <div style="font-size:14px; margin-bottom:6px;">
-    Usage: {percent.toFixed(1)}%
-  </div>
+  <p style="color: #9ca3af;">
+    {percent.toFixed(1)}%
+  </p>
 
-  <div style="font-size:14px; font-weight:600; color:${color}; margin-bottom:6px;">
-    Status: {status}
-  </div>
+  <p style="font-size: 0.9rem; color: #d1d5db;">
+    {status}
+  </p>
 
-  {note && (
-    <div style="font-size:12px; color:#9ca3af;">
-      {note}
+  <p style="font-size: 0.8rem; color: #9ca3af;">
+    {note}
+  </p>
+
+  {managers && managers.length > 0 && (
+    <div style="margin-top: 0.75rem; border-top: 1px solid #374151; padding-top: 0.75rem;">
+      <h4 style="font-size: 0.9rem; color:#d1d5db; margin-bottom: 0.5rem;">
+        Managers
+      </h4>
+
+      <ul style="font-size: 0.85rem; color:#9ca3af; line-height: 1.4; padding-left: 1rem;">
+        {managers.map(m => (
+          <li>{m.label}</li>
+        ))}
+      </ul>
     </div>
   )}
+
 </div>
+
