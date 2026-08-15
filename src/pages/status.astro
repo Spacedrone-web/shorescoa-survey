@@ -1,92 +1,53 @@
----
-import StatusDashboard from "../components/StatusDashboard.astro";
+// ---------------------------------------------------------
+// SAME-DAY CHECK-IN BY MANAGER (Top 5, excluding Self Managed)
+// ---------------------------------------------------------
+const sameDayManagers = await DB.prepare(`
+  SELECT 
+    invitedBy_companyName AS manager,
+    COUNT(*) AS same_day_checkins
+  FROM guests
+  WHERE arrival = date('now','-5 hours')
+    AND arrival = date(created)
+    AND invitedBy_companyName NOT LIKE '%Self Managed%'
+  GROUP BY manager
+  ORDER BY same_day_checkins DESC
+  LIMIT 5;
+`).all();
 
-const PASSWORD = "Shores9900!";
-
-let ok = false;
-
-if (Astro.request.method === "POST") {
-  const form = await Astro.request.formData();
-  ok = form.get("pw") === PASSWORD;
-}
----
-
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>ShoresCOA Status</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <style>
-      body {
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        background: #0f172a;
-        color: #e5e7eb;
-        display: flex;
-        justify-content: center;
-        align-items: flex-start;
-        min-height: 100vh;
-        padding: 2rem;
-      }
-      .card {
-        background: #111827;
-        border-radius: 0.75rem;
-        padding: 2rem;
-        max-width: 1100px;
-        width: 100%;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.5);
-      }
-      h1 {
-        margin-top: 0;
-        margin-bottom: 1rem;
-        font-size: 1.75rem;
-      }
-      form {
-        display: flex;
-        gap: 0.75rem;
-        margin-top: 1rem;
-      }
-      input[type="password"] {
-        flex: 1;
-        padding: 0.5rem 0.75rem;
-        border-radius: 0.375rem;
-        border: 1px solid #374151;
-        background: #020617;
-        color: #e5e7eb;
-      }
-      button {
-        padding: 0.5rem 1rem;
-        border-radius: 0.375rem;
-        border: none;
-        background: #22c55e;
-        color: #022c22;
-        font-weight: 600;
-        cursor: pointer;
-      }
-      button:hover {
-        background: #16a34a;
-      }
-      .error {
-        margin-top: 0.5rem;
-        color: #f97373;
-        font-size: 0.9rem;
-      }
-    </style>
-<link rel="icon" type="image/x-icon" href="/favicon-circle-v3.ico">
-
-  </head>
-  <body>
-    <div class="card">
-      <h1>ShoresCOA Status</h1>
-      {!ok && (
-        <>
-          <p>Enter status password to view gauges.</p>
-          <form method="POST">
-            <input type="password" name="pw" placeholder="Password" autocomplete="off" />
-            <button type="submit">Enter</button>
-          </form>
-        </>
-      )}
-      {ok && <StatusDashboard />}
-    </div>
-  </body>
-</html>
+// ---------------------------------------------------------
+// MANAGER OCCUPANCY % (≥ 6 units, Top 5)
+// ---------------------------------------------------------
+const managerOccupancy = await DB.prepare(`
+  WITH managed AS (
+    SELECT 
+      invitedBy_companyName AS manager,
+      COUNT(DISTINCT unit) AS total_units
+    FROM guests
+    WHERE invitedBy_companyName NOT LIKE '%Self Managed%'
+    GROUP BY invitedBy_companyName
+    HAVING total_units >= 6
+  )
+  SELECT
+    managed.manager,
+    managed.total_units,
+    (
+      SELECT COUNT(DISTINCT unit)
+      FROM guests
+      WHERE arrival <= DATE('now','-5 hours')
+        AND departure >= DATE('now','-5 hours')
+        AND invitedBy_companyName = managed.manager
+    ) AS rented_today,
+    ROUND(
+      (
+        SELECT COUNT(DISTINCT unit)
+        FROM guests
+        WHERE arrival <= DATE('now','-5 hours')
+          AND departure >= DATE('now','-5 hours')
+          AND invitedBy_companyName = managed.manager
+      ) * 1.0 / managed.total_units * 100,
+      2
+    ) AS occupancy_pct
+  FROM managed
+  ORDER BY occupancy_pct DESC
+  LIMIT 5;
+`).all();

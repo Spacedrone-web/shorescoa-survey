@@ -219,7 +219,7 @@ const totalPct = pct(totalRented, totalUnits);
     failed: {lastSync?.failed ?? 0}
   </p>
 
-  <div>
+  <div
     style="
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
