@@ -274,7 +274,8 @@ const managerOccupancy = await DB.prepare(`
     "
   >
     <StatusCard label="Yellow Parking" value={`${yellowUsed}/${yellowTotal}`} percent={yellowPct} status={statusLabel(yellowPct)} note="Yellow spaces in use, Does not accout for BB or Staff" />
-    <StatusCard label="Same-Day Check-ins" value={`${sameDayCount}/${totalTodayCount}`} percent={sameDayPct} status={statusLabel(sameDayPct)} note="Arrival date matches created date" />
+    <StatusCard label="Same-Day Check-ins" value={`${sameDayCount}/${totalTodayCount}`} percent={sameDayPct} status={statusLabel(sameDayPct)} note="Arrival date matches created date" managers={sameDayManagers.results.map(m => ({ label: m.manager, value: m.same_day_checkins }))}/>
+	<StatusCard label="Same-Day Check-ins" value={`${sameDayCount}/${totalTodayCount}`} percent={sameDayPct} status={statusLabel(sameDayPct)} note="Arrival date matches created date" />
     <StatusCard label="Departing Today" value={`${departingTodayCount}`} percent={0} status="Info" note="Guests leaving today" />
     <StatusCard label="Arriving Tomorrow" value={`${arrivingTomorrowCount}`} percent={0} status="Info" note="Forecast arrivals" />
     <StatusCard label="Studio" value={`${rentedByType["Studio"]}/${TOTAL["Studio"]}`} percent={studioPct} status={statusLabel(studioPct)} note="Rented / Available" />
@@ -282,29 +283,7 @@ const managerOccupancy = await DB.prepare(`
     <StatusCard label="2 Bedroom" value={`${rentedByType["2 Bedroom"]}/${TOTAL["2 Bedroom"]}`} percent={twoPct} status={statusLabel(twoPct)} note="Rented / Available" />
     <StatusCard label="3 Bedroom" value={`${rentedByType["3 Bedroom"]}/${TOTAL["3 Bedroom"]}`} percent={threePct} status={statusLabel(threePct)} note="Rented / Available" />
     <StatusCard label="Total Occupancy" value={`${totalRented}/${totalUnits}/${todaysGuestCount}`} percent={totalPct} status={statusLabel(totalPct)} note="Rented / Available / Est Guests" />
-
-    <StatusCard 
-      label="Manager Occupancy (Top 5)"
-      value=""
-      percent={0}
-      status="Info"
-      note="Managers with ≥ 6 units"
-      managers={managerOccupancy.results.map(m => ({
-        label: m.manager,
-        value: `${m.occupancy_pct}%`
-      }))}
-    />
-
-    <StatusCard 
-      label="Same-Day Check-ins (Top 5 Managers)"
-      value=""
-      percent={0}
-      status="Info"
-      note="Excludes Self Managed"
-      managers={sameDayManagers.results.map(m => ({
-        label: m.manager,
-        value: m.same_day_checkins
-      }))}
-    />
+	<StatusCard label="Total Occupancy" value={`${totalRented}/${totalUnits}/${todaysGuestCount}`} percent={totalPct} status={statusLabel(totalPct)} note="Rented / Available / Est Guests" managers={managerOccupancy.results.map(m => ({ label: m.manager, value: `${m.occupancy_pct}%`}))}/>
+		
   </div>
 </div>
