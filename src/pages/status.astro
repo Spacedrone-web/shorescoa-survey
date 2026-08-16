@@ -19,15 +19,17 @@ if (Astro.request.method === "POST") {
 
     <style>
       body {
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        background: #0f172a;
-        color: #e5e7eb;
-        display: flex;
-        justify-content: center;
-        align-items: flex-start;
-        min-height: 100vh;
-        padding: 2rem;
-      }
+		font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	    background: #0f172a;
+	    color: #e5e7eb;
+	    display: flex;
+	    justify-content: center;
+	    align-items: flex-start;
+	    min-height: 100vh;
+	    padding: 0;     /* ⭐ REMOVE FRAME */
+	    margin: 0;
+	  } 
+
 
       .card {
         background: #111827;
