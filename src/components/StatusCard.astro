@@ -22,10 +22,21 @@ const { label, value, percent, status, note, managers } = Astro.props;
       margin-top: 0.75rem;
     }
   }
+
+  /* ⭐ Tablet/iPad: reduce manager font size */
+  @media (max-width: 1024px) {
+    .status-card-right li {
+      font-size: 0.75rem !important;   /* smaller manager names */
+    }
+
+    .status-card-right h4 {
+      font-size: 0.8rem !important;    /* smaller header */
+    }
+  }
 </style>
 
 <div class="status-card" style="
-  background: #2d2d2d; /* or transparent */
+  background: #2d2d2d;
   padding: 1rem 1.25rem;
   border-radius: 0.5rem;
   color: white;
