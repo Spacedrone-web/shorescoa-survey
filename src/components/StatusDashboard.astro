@@ -267,6 +267,7 @@ const managerOccupancy = await DB.prepare(`
   </p>
 
   <div
+    class="status-grid"
     style="
       display: grid;
       gap: 1.5rem;
@@ -275,26 +276,27 @@ const managerOccupancy = await DB.prepare(`
       margin: 0 auto;
 
       /* ⭐ Desktop: 3 columns */
-      grid-template-columns: repeat(3, minmax(500px, 1fr));
+      grid-template-columns: repeat(3, minmax(300px, 1fr));
     "
-    class="status-grid"
   >
+
 
   <style>
     /* ⭐ Tablet: 2 columns */
     @media (max-width: 1400px) {
       .status-grid {
-        grid-template-columns: repeat(2, minmax(400px, 1fr));
+        grid-template-columns: repeat(2, minmax(300px, 1fr));
       }
     }
 
     /* ⭐ Phone: 1 column */
     @media (max-width: 800px) {
       .status-grid {
-        grid-template-columns: repeat(1, minmax(300px, 1fr));
+        grid-template-columns: repeat(1, minmax(250px, 1fr));
       }
     }
   </style>
+
   
   <StatusCard 
     label="Yellow Parking"
