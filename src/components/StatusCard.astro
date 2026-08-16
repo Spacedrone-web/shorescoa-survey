@@ -26,11 +26,11 @@ const { label, value, percent, status, note, managers } = Astro.props;
   /* ⭐ iPad/tablet: reduce manager font sizes */
   @media (max-width: 1366px) {
     .status-card-right h4 {
-      font-size: 0.8rem !important;
+      font-size: 0.75rem !important;
     }
 
     .status-card-right li {
-      font-size: 0.75rem !important;
+      font-size: 0.7rem !important;
     }
   }
 </style>
@@ -42,10 +42,10 @@ const { label, value, percent, status, note, managers } = Astro.props;
   color: white;
   display: flex;
   justify-content: space-between;
-  gap: 1.5rem;
+  gap: 1rem;                 /* ⭐ tighter spacing */
 ">
 
-  <!-- LEFT SIDE: Main Stats -->
+  <!-- LEFT SIDE -->
   <div class="status-card-left" style="
     display: flex;
     flex-direction: column;
@@ -73,27 +73,26 @@ const { label, value, percent, status, note, managers } = Astro.props;
     </p>
   </div>
 
-  <!-- RIGHT SIDE: Manager List -->
+  <!-- RIGHT SIDE -->
   {managers && managers.length > 0 && (
     <div class="status-card-right" style="
-      flex: 2;                     /* ⭐ wider column */
-      min-width: 180px;            /* ⭐ prevents vertical stacking */
+      flex: 1.4;                 /* ⭐ slightly wider but not huge */
+      min-width: 150px;          /* ⭐ prevents stacking but keeps compact */
       border-left: 1px solid #374151;
-      padding-left: 0.75rem;
+      padding-left: 0.5rem;      /* ⭐ smaller padding */
       display: flex;
       flex-direction: column;
-      gap: 0.25rem;
-
-      white-space: normal;         /* ⭐ correct wrapping */
+      gap: 0.15rem;              /* ⭐ tighter spacing */
+      white-space: normal;
     ">
-      <h4 style="font-size: 0.9rem; color:#d1d5db; margin-bottom: 0.25rem;">
+      <h4 style="font-size: 0.8rem; color:#d1d5db; margin-bottom: 0.15rem;">
         {label === "Same-Day Check-ins" && "Top Offenders"}
         {label === "Total Occupancy" && "(total/rented) Top Performers"}
         {label !== "Same-Day Check-ins" && label !== "Total Occupancy" && "Managers"}
       </h4>
 
       {managers.map(m => (
-        <li style="list-style: none; padding-left: 0;">
+        <li style="list-style: none; padding-left: 0; font-size: 0.75rem;">
           {label === "Total Occupancy"
             ? `(${m.total}/${m.rented}) ${m.label}`
             : m.label}
