@@ -23,16 +23,17 @@ const { label, value, percent, status, note, managers } = Astro.props;
     }
   }
 
-	/* ⭐ iPad/tablet: reduce manager font sizes */
-	@media (max-width: 1366px) {
-	  .status-card-right h4 {
-		font-size: 0.8rem !important;
-	  }
+    /* ⭐ iPad/tablet: reduce manager font sizes */
+    @media (max-width: 1366px) {
+      .status-card-right h4 {
+       font-size: 0.8rem !important;
+     }
 
-	  .status-card-right li {
-		font-size: 0.75rem !important;
-	  }
-	}
+     status-card-right li {
+       font-size: 0.75rem !important;
+     }
+   }
+
 
 </style>
 
@@ -76,15 +77,20 @@ const { label, value, percent, status, note, managers } = Astro.props;
 
   <!-- RIGHT SIDE: Manager List -->
   {managers && managers.length > 0 && (
-    <div class="status-card-right" style="
-      flex: 1;
-      border-left: 1px solid #374151;
-      padding-left: 0.75rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-      white-space: nowrap;
-    ">
+	<div class="status-card-right" style="
+	  flex: 1;
+	  border-left: 1px solid #374151;
+	  padding-left: 0.75rem;
+	  display: flex;
+	  flex-direction: column;
+	  gap: 0.25rem;
+
+	  /* ⭐ FIX: allow wrapping so no overlap */
+	  white-space: normal;
+	  overflow-wrap: break-word;
+	  word-break: break-word;
+	">
+
       <h4 style="font-size: 0.9rem; color:#d1d5db; margin-bottom: 0.25rem;">
         {label === "Same-Day Check-ins" && "Top Offenders"}
         {label === "Total Occupancy" && "(total/rented) Top Performers"}
