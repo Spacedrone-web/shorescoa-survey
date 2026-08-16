@@ -23,16 +23,17 @@ const { label, value, percent, status, note, managers } = Astro.props;
     }
   }
 
-  /* ⭐ iPad/tablet: reduce manager font sizes */
-  @media (max-width: 1024px) {
-    .status-card-right h4 {
-      font-size: 0.8rem !important;
-    }
+	/* ⭐ iPad/tablet: reduce manager font sizes */
+	@media (max-width: 1366px) {
+	  .status-card-right h4 {
+		font-size: 0.8rem !important;
+	  }
 
-    .status-card-right li {
-      font-size: 0.75rem !important;
-    }
-  }
+	  .status-card-right li {
+		font-size: 0.75rem !important;
+	  }
+	}
+
 </style>
 
 <div class="status-card" style="
