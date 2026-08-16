@@ -7,7 +7,7 @@ const { label, value, percent, status, note, managers } = Astro.props;
   @media (max-width: 800px) {
     .status-card {
       flex-direction: column !important;
-      min-width: unset !important;
+      width: 100% !important;
     }
 
     .status-card-left,
@@ -30,23 +30,15 @@ const { label, value, percent, status, note, managers } = Astro.props;
   border-radius: 0.5rem;
   color: white;
   display: flex;
-  flex-direction: row;
   justify-content: space-between;
   gap: 1.5rem;
-
-  /* ⭐ Wider card like the old layout */
-  min-width: 500px;
 ">
 
   <!-- LEFT SIDE: Main Stats -->
   <div class="status-card-left" style="
     display: flex;
     flex-direction: column;
-
-    /* ⭐ REMOVE GAPS COMPLETELY */
     gap: 0rem;
-
-    /* ⭐ Keep left side wide */
     flex: 4;
   ">
     <h3 style="font-size: 1.1rem; font-weight: 600; margin: 0;">
@@ -70,21 +62,15 @@ const { label, value, percent, status, note, managers } = Astro.props;
     </p>
   </div>
 
-  <!--  RIGHT SIDE: Manager List -->
+  <!-- RIGHT SIDE: Manager List -->
   {managers && managers.length > 0 && (
     <div class="status-card-right" style="
-      /* ⭐ Narrower manager column */
       flex: 1;
-
-      /* ⭐ Move divider LEFT */
       border-left: 1px solid #374151;
       padding-left: 0.75rem;
-
       display: flex;
       flex-direction: column;
       gap: 0.25rem;
-
-      /* ⭐ Prevent wrapping */
       white-space: nowrap;
     ">
       <h4 style="font-size: 0.9rem; color:#d1d5db; margin-bottom: 0.25rem;">
