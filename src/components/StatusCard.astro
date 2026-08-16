@@ -2,7 +2,29 @@
 const { label, value, percent, status, note, managers } = Astro.props;
 ---
 
-<div style="
+<style>
+  /* ⭐ Mobile: stack columns vertically */
+  @media (max-width: 800px) {
+    .status-card {
+      flex-direction: column !important;
+      min-width: unset !important;
+    }
+
+    .status-card-left,
+    .status-card-right {
+      flex: unset !important;
+      width: 100% !important;
+      border-left: none !important;
+      padding-left: 0 !important;
+    }
+
+    .status-card-right {
+      margin-top: 0.75rem;
+    }
+  }
+</style>
+
+<div class="status-card" style="
   background: #1f2937;
   padding: 1rem 1.25rem;
   border-radius: 0.5rem;
@@ -17,7 +39,7 @@ const { label, value, percent, status, note, managers } = Astro.props;
 ">
 
   <!-- LEFT SIDE: Main Stats -->
-  <div style="
+  <div class="status-card-left" style="
     display: flex;
     flex-direction: column;
 
@@ -50,7 +72,7 @@ const { label, value, percent, status, note, managers } = Astro.props;
 
   <!-- RIGHT SIDE: Manager List -->
   {managers && managers.length > 0 && (
-    <div style="
+    <div class="status-card-right" style="
       /* ⭐ Narrower manager column */
       flex: 1;
 
@@ -67,7 +89,7 @@ const { label, value, percent, status, note, managers } = Astro.props;
     ">
       <h4 style="font-size: 0.9rem; color:#d1d5db; margin-bottom: 0.25rem;">
         {label === "Same-Day Check-ins" && "Top Offenders"}
-        {label === "Total Occupancy" && "(total/rented)Top Performers"}
+        {label === "Total Occupancy" && "(total/rented) Top Performers"}
         {label !== "Same-Day Check-ins" && label !== "Total Occupancy" && "Managers"}
       </h4>
 
