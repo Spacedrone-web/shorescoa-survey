@@ -5,439 +5,288 @@ export const prerender = false;
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SOP Access Checker</title>
-    <!-- Inter font only — no Tailwind CDN, no Lucide CDN -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <style>
-        :root {
-            --navy:         #0a1f44;
-            --navy-mid:     #112244;
-            --navy-card:    #0d1f3c;
-            --gold:         #c9a84c;
-            --gold-dark:    #b08930;
-            --gold-pale:    #f5eed6;
-            --border-soft:  #8aaad4;
-            --border-light: #c0d4eb;
-            --text-muted:   #6b7280;
-            --text-faint:   #9ca3af;
-            --white:        #ffffff;
-            --radius:       12px;
-            --radius-lg:    18px;
-        }
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        html, body {
-            height: 100%;
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            background: var(--navy);
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-        button { cursor: pointer; font-family: inherit; border: none; }
-        input  { font-family: inherit; }
-        svg    { display: inline-block; flex-shrink: 0; }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SOP Access Checker</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy-900:#0a1f44; --navy-800:#0d2650; --navy-700:#112244;
+      --navy-600:#1a3366; --navy-500:#254a82; --navy-400:#3a6199;
+      --navy-300:#5a81b3; --navy-200:#8aaad4; --navy-100:#c0d4eb;
+      --gold-400:#c9a84c; --gold-300:#d4ba6f;
+      --green-700:#15803d; --green-600:#16a34a; --green-100:#dcfce7;
+      --red-700:#b91c1c;   --red-600:#dc2626;   --red-100:#fee2e2;
+      --amber-600:#d97706; --amber-100:#fef3c7;
+    }
+    body { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif; background:var(--navy-900); min-height:100vh; color:#fff; }
+    @keyframes shake { 0%,100%{transform:translateX(0)} 10%,30%,50%,70%,90%{transform:translateX(-6px)} 20%,40%,60%,80%{transform:translateX(6px)} }
+    @keyframes spin  { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+    @keyframes fadeIn{ from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes pulseGlow { 0%,100%{box-shadow:0 0 0 0 rgba(201,168,76,.3)} 50%{box-shadow:0 0 20px 6px rgba(201,168,76,.15)} }
+    .shake   { animation:shake .5s ease-in-out; }
+    .fade-in { animation:fadeIn .35s ease-out; }
 
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            15%, 45%, 75% { transform: translateX(-7px); }
-            30%, 60%, 90% { transform: translateX(7px); }
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(14px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes pulseGlow {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(201,168,76,0); }
-            50%       { box-shadow: 0 0 0 6px rgba(201,168,76,0.18); }
-        }
-        .shake   { animation: shake 0.45s ease-in-out; }
-        .spin    { animation: spin 1s linear infinite; }
-        .fade-up { animation: fadeUp 0.3s ease-out both; }
-        .glow-focus:focus { animation: pulseGlow 2s ease-in-out infinite; }
+    .page { min-height:100vh; display:flex; flex-direction:column; }
 
-        #login-screen   { display: none; }
-        #checker-screen { display: none; }
-        #login-screen.active   { display: flex; }
-        #checker-screen.active { display: flex; }
+    header {
+      background:linear-gradient(135deg,var(--navy-800),var(--navy-700));
+      border-bottom:2px solid var(--gold-400);
+      padding:16px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px;
+    }
+    .header-brand { display:flex; align-items:center; gap:12px; }
+    .header-logo  { width:48px;height:48px;background:var(--gold-400);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;color:var(--navy-900);flex-shrink:0; }
+    .header-title { font-size:20px;font-weight:700; }
+    .header-sub   { font-size:12px;color:var(--navy-200);margin-top:2px; }
+    .header-meta  { text-align:right;font-size:11px;color:var(--navy-300);line-height:1.5; }
 
-        /* ── LOGIN ── */
-        #login-screen {
-            min-height: 100vh;
-            align-items: center;
-            justify-content: center;
-            padding: 1.25rem;
-            background: radial-gradient(ellipse at 30% 20%, rgba(201,168,76,0.07) 0%, transparent 55%), var(--navy);
-        }
-        .login-card {
-            background: var(--white);
-            border-radius: var(--radius-lg);
-            box-shadow: 0 28px 60px rgba(0,0,0,0.55);
-            width: 100%; max-width: 400px;
-            padding: 2.75rem 2.25rem 2.25rem;
-            display: flex; flex-direction: column; align-items: center;
-        }
-        .login-logo { margin-bottom: 1.1rem; }
-        .login-title { color: var(--navy); font-weight: 800; font-size: 1.2rem; letter-spacing: 0.06em; text-align: center; }
-        .login-subtitle { color: var(--text-muted); font-size: 0.78rem; margin-top: 0.3rem; text-align: center; }
-        .login-divider { width: 2.5rem; height: 2px; background: var(--gold); border-radius: 9999px; margin: 1.25rem 0 1.5rem; }
-        #login-form { width: 100%; display: flex; flex-direction: column; gap: 1rem; }
-        .form-label { display: block; color: var(--navy); font-size: 0.82rem; font-weight: 600; margin-bottom: 0.35rem; letter-spacing: 0.04em; text-transform: uppercase; }
-        .form-input { display: block; width: 100%; border: 2px solid var(--border-light); border-radius: var(--radius); padding: 0.8rem 1rem; font-size: 1.05rem; color: var(--navy); font-weight: 500; outline: none; transition: border-color 0.2s, box-shadow 0.2s; background: #f8fafd; }
-        .form-input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,168,76,0.18); background: var(--white); }
-        .btn-signin { width: 100%; background: var(--gold); color: var(--navy); font-weight: 700; font-size: 0.95rem; letter-spacing: 0.06em; border-radius: var(--radius); padding: 0.9rem; min-height: 50px; transition: background 0.18s; }
-        .btn-signin:hover { background: var(--gold-dark); }
-        .login-error { display: none; align-items: center; gap: 0.4rem; color: #dc2626; font-size: 0.82rem; font-weight: 500; text-align: center; justify-content: center; }
-        .login-error.visible { display: flex; }
+    main { flex:1;display:flex;align-items:flex-start;justify-content:center;padding:32px 16px; }
+    .card { background:var(--navy-800);border:1px solid var(--navy-600);border-radius:16px;padding:32px 28px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.4); }
 
-        /* ── CHECKER SHELL ── */
-        #checker-screen { flex-direction: column; min-height: 100vh; }
-        .c-header { display: flex; align-items: center; justify-content: space-between; padding: 0 1.25rem; height: 58px; background: var(--navy-mid); border-bottom: 2px solid rgba(201,168,76,0.22); flex-shrink: 0; }
-        .c-brand { display: flex; align-items: center; gap: 0.6rem; }
-        .c-brand-title { color: var(--white); font-weight: 700; font-size: 0.9rem; letter-spacing: 0.05em; }
-        .c-brand-sub { color: rgba(201,168,76,0.7); font-size: 0.65rem; margin-top: 0.1rem; }
-        .btn-signout { border: 1.5px solid rgba(201,168,76,0.6); color: var(--gold); background: transparent; font-size: 0.72rem; font-weight: 600; padding: 0.35rem 0.9rem; border-radius: 8px; min-height: 34px; transition: background 0.18s, color 0.18s; }
-        .btn-signout:hover { background: var(--gold); color: var(--navy); border-color: var(--gold); }
-        .c-main { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1rem; padding: 1.1rem 1rem; overflow-y: auto; }
+    /* LOGIN */
+    .login-label { font-size:13px;font-weight:600;color:var(--navy-200);margin-bottom:8px;letter-spacing:.05em;text-transform:uppercase; }
+    .login-input { width:100%;padding:12px 16px;background:var(--navy-700);border:1.5px solid var(--navy-500);border-radius:8px;color:#fff;font-size:16px;outline:none;transition:border-color .2s; }
+    .login-input:focus { border-color:var(--gold-400);animation:pulseGlow 2s ease-in-out infinite; }
+    .login-input::placeholder { color:var(--navy-300); }
+    .login-btn { margin-top:16px;width:100%;padding:14px;background:var(--gold-400);color:var(--navy-900);font-weight:700;font-size:15px;letter-spacing:.04em;border:none;border-radius:8px;cursor:pointer;transition:background .2s; }
+    .login-btn:hover { background:var(--gold-300); }
+    .login-error { margin-top:12px;padding:10px 14px;background:#b91c1c;border-radius:8px;font-size:13px;display:none; }
 
-        /* ── INPUT ZONE ── */
-        .input-zone { background: var(--white); border-radius: var(--radius-lg); box-shadow: 0 8px 24px rgba(0,0,0,0.28); width: 100%; max-width: 600px; padding: 1.5rem 1.5rem 1.75rem; display: flex; flex-direction: column; align-items: center; }
-        .input-zone-label { color: var(--text-muted); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 0.4rem; }
-        .rfid-input { width: 100%; text-align: center; font-family: 'Courier New', monospace; font-size: 1.9rem; font-weight: 700; letter-spacing: 0.08em; padding: 0.9rem 1rem; border-radius: var(--radius); border: 3px solid var(--gold); color: var(--navy); outline: none; transition: box-shadow 0.2s; background: #fffdf5; }
-        .rfid-input:focus { box-shadow: 0 0 0 4px rgba(201,168,76,0.22); background: var(--white); }
-        .rfid-input::placeholder { color: #bbb; font-weight: 400; font-size: 1.2rem; }
-        .action-row { display: flex; gap: 0.75rem; margin-top: 1rem; width: 100%; max-width: 340px; }
-        .btn-clear { flex: 1; background: transparent; border: 2px solid var(--border-soft); color: var(--navy); font-weight: 600; font-size: 0.82rem; border-radius: var(--radius); padding: 0.7rem; min-height: 48px; display: flex; align-items: center; justify-content: center; gap: 0.35rem; transition: background 0.15s; }
-        .btn-clear:hover { background: #edf2f8; }
-        .btn-check { flex: 2; background: var(--gold); color: var(--navy); font-weight: 700; font-size: 1rem; border-radius: var(--radius); padding: 0.7rem; min-height: 48px; display: flex; align-items: center; justify-content: center; gap: 0.45rem; transition: background 0.15s, transform 0.1s; }
-        .btn-check:hover  { background: var(--gold-dark); }
-        .btn-check:active { transform: scale(0.97); }
-        .scanner-hint { color: var(--text-faint); font-size: 0.68rem; margin-top: 0.65rem; display: flex; align-items: center; gap: 0.3rem; }
+    /* CHECKER */
+    #checker-section { display:none; }
+    .section-label { font-size:11px;font-weight:700;color:var(--navy-300);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px; }
+    .input-row { display:flex;gap:8px;margin-bottom:12px; }
+    .rfid-input { flex:1;padding:14px 16px;background:var(--navy-700);border:2px solid var(--navy-500);border-radius:10px;color:#fff;font-size:22px;font-weight:700;font-family:'Courier New',monospace;letter-spacing:.08em;outline:none;transition:border-color .2s; }
+    .rfid-input:focus { border-color:var(--gold-400); }
+    .rfid-input::placeholder { color:var(--navy-400);font-size:16px;font-weight:400;letter-spacing:0; }
+    .btn { padding:10px 18px;border-radius:8px;border:none;cursor:pointer;font-weight:600;font-size:14px;transition:opacity .15s,transform .1s; }
+    .btn:active { transform:scale(.97); }
+    .btn-clear  { background:var(--navy-600);color:var(--navy-100); }
+    .btn-check  { background:var(--gold-400);color:var(--navy-900);padding:10px 22px; }
+    .btn-check:hover   { background:var(--gold-300); }
+    .btn-check:disabled { opacity:.5;cursor:not-allowed; }
 
-        /* ── KEYPAD ── */
-        .keypad { display: grid; grid-template-columns: repeat(3, 60px); gap: 0.55rem; margin-top: 1.3rem; }
-        .kp-key { width: 60px; height: 58px; border: 2px solid rgba(201,168,76,0.5); background: var(--white); color: var(--navy); font-weight: 700; font-size: 1.15rem; border-radius: var(--radius); display: flex; align-items: center; justify-content: center; transition: background 0.1s, transform 0.08s; user-select: none; }
-        .kp-key:hover  { background: var(--gold-pale); border-color: var(--gold); }
-        .kp-key:active { transform: scale(0.9); background: var(--navy); color: var(--white); }
-        .kp-key.kp-submit { background: var(--gold); border-color: var(--gold-dark); font-size: 1.3rem; }
-        .kp-key.kp-submit:hover { background: var(--gold-dark); }
+    /* KEYPAD */
+    .keypad { display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px; }
+    .key { aspect-ratio:1.4;border:none;border-radius:10px;background:var(--navy-700);color:#fff;font-size:20px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .1s,transform .1s;user-select:none; }
+    .key:hover  { background:var(--navy-600); }
+    .key:active { background:var(--navy-500);transform:scale(.94); }
+    .key-del   { background:var(--navy-600); }
+    .key-check { background:var(--gold-400);color:var(--navy-900); }
+    .key-check:hover { background:var(--gold-300); }
 
-        /* ── RESULT ZONE ── */
-        .result-zone { width: 100%; max-width: 600px; min-height: 200px; border-radius: var(--radius-lg); box-shadow: 0 8px 24px rgba(0,0,0,0.28); display: flex; align-items: center; justify-content: center; padding: 2.25rem 1.5rem; background: var(--navy-card); transition: background 0.35s ease; }
-        .result-inner { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.5rem; }
-        .result-title { font-weight: 800; font-size: 1.8rem; color: var(--white); letter-spacing: 0.04em; line-height: 1.1; }
-        .result-sub { font-size: 0.9rem; color: rgba(255,255,255,0.82); font-weight: 500; }
-        .result-action-btn { margin-top: 0.85rem; background: rgba(255,255,255,0.92); font-weight: 700; font-size: 0.82rem; letter-spacing: 0.07em; border-radius: 10px; padding: 0.65rem 2rem; min-height: 42px; transition: background 0.15s; }
-        .result-action-btn:hover { background: var(--white); }
-        .result-countdown { font-size: 0.68rem; color: rgba(255,255,255,0.5); margin-top: 0.3rem; }
-        .result-idle { color: var(--text-faint); font-style: italic; font-size: 0.85rem; margin-top: 0.5rem; }
-        .rz-good    { background: #15803d; }
-        .rz-bad     { background: #b91c1c; }
-        .rz-error   { background: #92400e; }
-        .rb-green { color: #15803d; }
-        .rb-red   { color: #b91c1c; }
-        .rb-amber { color: #92400e; }
+    /* RESULT */
+    #result-box { border-radius:12px;padding:20px 18px;display:none; }
+    #result-box.valid   { background:var(--green-100);border:2px solid var(--green-600);color:var(--green-700); animation:fadeIn .35s ease-out; }
+    #result-box.invalid { background:var(--red-100);  border:2px solid var(--red-600);  color:var(--red-700);   animation:fadeIn .35s ease-out; }
+    #result-box.error   { background:var(--amber-100);border:2px solid var(--amber-600);color:#92400e;          animation:fadeIn .35s ease-out; }
+    .result-icon  { font-size:36px;margin-bottom:8px; }
+    .result-title { font-size:22px;font-weight:800;margin-bottom:4px; }
+    .result-sub   { font-size:13px;opacity:.8;margin-bottom:12px; }
+    .result-countdown { font-size:12px;opacity:.6; }
+    .btn-retry { margin-top:10px;padding:8px 16px;border-radius:6px;border:none;cursor:pointer;font-weight:600;font-size:13px; }
+    .btn-retry.valid   { background:var(--green-600);color:#fff; }
+    .btn-retry.invalid { background:var(--red-600);  color:#fff; }
+    .btn-retry.error   { background:var(--amber-600);color:#fff; }
 
-        /* ── FOOTER ── */
-        .c-footer { flex-shrink: 0; text-align: center; padding: 0.6rem 1rem 0.8rem; }
-        .c-footer p { color: #374151; font-size: 0.65rem; line-height: 1.6; }
-        .c-footer span { color: rgba(201,168,76,0.4); margin: 0 0.3rem; }
-
-        @media (min-width: 640px) {
-            .input-zone { padding: 2rem 2.25rem 2.25rem; }
-            .rfid-input { font-size: 2.2rem; }
-            .result-title { font-size: 2.1rem; }
-        }
-    </style>
+    hr.divider { border:none;border-top:1px solid var(--navy-600);margin:20px 0; }
+    footer { padding:12px 24px;text-align:center;font-size:11px;color:var(--navy-400);border-top:1px solid var(--navy-700); }
+  </style>
 </head>
 <body>
+<div class="page">
 
-<!-- LOGIN SCREEN -->
-<div id="login-screen" class="active">
-    <div class="login-card" id="login-card">
-        <div class="login-logo">
-            <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="32" cy="32" r="30" fill="#0a1f44" stroke="#c9a84c" stroke-width="2"/>
-                <path d="M10 36 Q17 28 24 36 Q31 44 38 36 Q45 28 54 36" stroke="#c9a84c" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-                <path d="M32 12 L32 30" stroke="#c9a84c" stroke-width="3" stroke-linecap="round"/>
-                <path d="M25 19 L32 12 L39 19" stroke="#c9a84c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                <circle cx="32" cy="34" r="3" fill="#c9a84c"/>
-            </svg>
-        </div>
-        <h1 class="login-title">SHORES OF PANAMA</h1>
-        <p class="login-subtitle">Staff Access Verification System</p>
-        <div class="login-divider"></div>
-        <form id="login-form" autocomplete="off" novalidate>
-            <div>
-                <label class="form-label" for="pw-input">Staff Password</label>
-                <input type="password" id="pw-input" class="form-input glow-focus" placeholder="Enter password" autocomplete="off" />
-            </div>
-            <button type="submit" class="btn-signin">SIGN IN</button>
-            <div id="login-error" class="login-error" role="alert">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-                </svg>
-                Incorrect password. Please try again.
-            </div>
-        </form>
+  <header>
+    <div class="header-brand">
+      <div class="header-logo">SOP</div>
+      <div>
+        <div class="header-title">SOP Access Checker</div>
+        <div class="header-sub">Staff Access Verification System</div>
+      </div>
     </div>
-</div>
+    <div class="header-meta">IT: locks@shoresofpanama-hoa.com<br>v1.2 | Aug 2026 · Shores of Panama HOA</div>
+  </header>
 
-<!-- CHECKER SCREEN -->
-<div id="checker-screen">
-    <header class="c-header">
-        <div class="c-brand">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="7.5" cy="15.5" r="5.5"/>
-                <path d="M21 2l-9.6 9.6"/>
-                <path d="M15.5 7.5l3 3L22 7l-3-3"/>
+  <main>
+    <div class="card">
+
+      <!-- LOGIN -->
+      <section id="login-section">
+        <div class="login-label">Staff Password</div>
+        <input id="pw-input" class="login-input" type="password" placeholder="Enter staff password…" autocomplete="current-password" />
+        <button class="login-btn" id="login-btn">SIGN IN</button>
+        <div class="login-error" id="login-error">⚠ Incorrect password. Please try again.</div>
+      </section>
+
+      <!-- CHECKER -->
+      <section id="checker-section">
+        <div class="section-label">Scan or Enter RFID / Card Number</div>
+        <div class="input-row">
+          <input id="rfid-input" class="rfid-input" type="text" inputmode="numeric" pattern="[0-9]*"
+                 placeholder="Card number…" maxlength="20" autocomplete="off" />
+          <button class="btn btn-clear" id="clear-btn">CLEAR</button>
+          <button class="btn btn-check" id="check-btn">CHECK</button>
+        </div>
+
+        <div class="keypad" id="keypad">
+          <button class="key" data-v="1">1</button>
+          <button class="key" data-v="2">2</button>
+          <button class="key" data-v="3">3</button>
+          <button class="key" data-v="4">4</button>
+          <button class="key" data-v="5">5</button>
+          <button class="key" data-v="6">6</button>
+          <button class="key" data-v="7">7</button>
+          <button class="key" data-v="8">8</button>
+          <button class="key" data-v="9">9</button>
+          <button class="key" data-v="0">0</button>
+          <button class="key key-del" id="del-btn" aria-label="Backspace">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/>
+              <line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/>
             </svg>
-            <div>
-                <div class="c-brand-title">SOP Access Checker</div>
-                <div class="c-brand-sub">RFID / Card Verification</div>
-            </div>
-        </div>
-        <button id="signout-btn" class="btn-signout">Sign Out</button>
-    </header>
-
-    <main class="c-main">
-        <div class="input-zone fade-up">
-            <div class="input-zone-label">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/>
-                    <path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
-                    <line x1="7" y1="12" x2="17" y2="12" stroke-width="2.5"/>
-                </svg>
-                Scan or Enter RFID / Card Number
-            </div>
-            <input type="tel" id="rfid-input" class="rfid-input" placeholder="e.g. 780504125"
-                   inputmode="numeric" autocomplete="off" aria-label="RFID card number" />
-            <div class="action-row">
-                <button id="clear-btn" class="btn-clear" type="button">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M20 5H9l-7 7 7 7h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/>
-                        <line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/>
-                    </svg>
-                    CLEAR
-                </button>
-                <button id="check-btn" class="btn-check" type="button">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
-                    </svg>
-                    CHECK
-                </button>
-            </div>
-            <p class="scanner-hint">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
-                </svg>
-                Barcode scanner auto-submits on Enter
-            </p>
-            <div class="keypad" id="keypad" aria-label="Numeric keypad"></div>
+          </button>
+          <button class="key key-check" id="keypad-check-btn" aria-label="Check">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </button>
         </div>
 
-        <div id="result-zone" class="result-zone fade-up">
-            <div id="result-content" class="result-inner">
-                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#4b5563" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/>
-                    <path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
-                    <rect x="7" y="7" width="10" height="10" rx="1.5"/>
-                </svg>
-                <p class="result-idle">Results will appear here after scan</p>
-            </div>
-        </div>
-    </main>
+        <hr class="divider" />
 
-    <footer class="c-footer">
-        <p>SOP Staff Tool<span>·</span>IT: locks@shoresofpanama-hoa.com<span>·</span>v1.2 | Aug 2026</p>
-    </footer>
+        <div id="result-box">
+          <div class="result-icon" id="result-icon"></div>
+          <div class="result-title" id="result-title"></div>
+          <div class="result-sub" id="result-sub"></div>
+          <button class="btn-retry" id="retry-btn">TRY AGAIN</button>
+          <div class="result-countdown" id="result-countdown"></div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <footer>Shores of Panama HOA — Internal Staff Tool — Not for public use</footer>
 </div>
 
 <script is:inline>
 (function () {
-    'use strict';
+  'use strict';
+  var STAFF_PASSWORD = 'Shores9900!';
+  var SESSION_KEY    = 'sop_rfid_auth';
+  var AUTO_RESET_SEC = 5;
 
-    var PASSWORD  = 'Shores9900!';
-    var API_URL   = '/api/pdk-check';
-    var AUTO_GOOD = 8;
-    var AUTO_BAD  = 8;
-    var AUTO_ERR  = 14;
+  var loginSection    = document.getElementById('login-section');
+  var checkerSection  = document.getElementById('checker-section');
+  var pwInput         = document.getElementById('pw-input');
+  var loginBtn        = document.getElementById('login-btn');
+  var loginError      = document.getElementById('login-error');
+  var rfidInput       = document.getElementById('rfid-input');
+  var clearBtn        = document.getElementById('clear-btn');
+  var checkBtn        = document.getElementById('check-btn');
+  var delBtn          = document.getElementById('del-btn');
+  var keypadCheckBtn  = document.getElementById('keypad-check-btn');
+  var resultBox       = document.getElementById('result-box');
+  var resultIcon      = document.getElementById('result-icon');
+  var resultTitle     = document.getElementById('result-title');
+  var resultSub       = document.getElementById('result-sub');
+  var retryBtn        = document.getElementById('retry-btn');
+  var resultCountdown = document.getElementById('result-countdown');
+  var keypad          = document.getElementById('keypad');
+  var resetTimer      = null;
 
-    var loginScreen   = document.getElementById('login-screen');
-    var checkerScreen = document.getElementById('checker-screen');
-    var loginCard     = document.getElementById('login-card');
-    var loginForm     = document.getElementById('login-form');
-    var pwInput       = document.getElementById('pw-input');
-    var loginError    = document.getElementById('login-error');
-    var signoutBtn    = document.getElementById('signout-btn');
-    var rfidInput     = document.getElementById('rfid-input');
-    var clearBtn      = document.getElementById('clear-btn');
-    var checkBtn      = document.getElementById('check-btn');
-    var resultZone    = document.getElementById('result-zone');
-    var resultContent = document.getElementById('result-content');
-    var keypadEl      = document.getElementById('keypad');
-    var countdownTimer = null;
+  try { if (sessionStorage.getItem(SESSION_KEY) === '1') showChecker(); } catch(e) {}
 
-    /* Keypad */
-    ['1','2','3','4','5','6','7','8','9','DEL','0','OK'].forEach(function (k) {
-        var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'kp-key';
-        if (k === 'OK')  btn.classList.add('kp-submit');
-        if (k === 'DEL') {
-            btn.innerHTML = '&#x232B;';
-            btn.setAttribute('aria-label', 'Delete');
-            btn.addEventListener('click', function () { rfidInput.value = rfidInput.value.slice(0, -1); rfidInput.focus(); });
-        } else if (k === 'OK') {
-            btn.textContent = '\u2713';
-            btn.setAttribute('aria-label', 'Submit');
-            btn.addEventListener('click', triggerCheck);
+  loginBtn.addEventListener('click', doLogin);
+  pwInput.addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
+
+  function doLogin() {
+    if (pwInput.value === STAFF_PASSWORD) {
+      try { sessionStorage.setItem(SESSION_KEY, '1'); } catch(e) {}
+      loginError.style.display = 'none';
+      showChecker();
+    } else {
+      loginError.style.display = 'block';
+      pwInput.value = '';
+      pwInput.classList.add('shake');
+      setTimeout(function(){ pwInput.classList.remove('shake'); }, 600);
+    }
+  }
+
+  function showChecker() {
+    loginSection.style.display  = 'none';
+    checkerSection.style.display = 'block';
+    rfidInput.focus();
+  }
+
+  keypad.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-v]');
+    if (btn) { rfidInput.value += btn.dataset.v; rfidInput.focus(); }
+  });
+  delBtn.addEventListener('click', function(){ rfidInput.value = rfidInput.value.slice(0,-1); rfidInput.focus(); });
+  clearBtn.addEventListener('click', resetUI);
+  retryBtn.addEventListener('click', resetUI);
+  keypadCheckBtn.addEventListener('click', triggerCheck);
+  checkBtn.addEventListener('click', triggerCheck);
+  rfidInput.addEventListener('keydown', function(e){ if(e.key==='Enter') triggerCheck(); });
+
+  function triggerCheck() {
+    var q = rfidInput.value.trim();
+    if (!q) { rfidInput.classList.add('shake'); setTimeout(function(){ rfidInput.classList.remove('shake'); }, 600); return; }
+    doCheck(q);
+  }
+
+  function doCheck(q) {
+    checkBtn.disabled = true;
+    keypadCheckBtn.disabled = true;
+    showResult('error', '⟳', 'Checking…', 'Contacting PDK.io access control system…', true);
+
+    fetch('/api/pdk-check?q=' + encodeURIComponent(q))
+      .then(function(r){ return r.json(); })
+      .then(function(data) {
+        if (data.ok === true) {
+          showResult('valid', '✓', 'VALID ACCESS', 'Card ' + q + ' is active in the system.');
+        } else if (data.notFound) {
+          showResult('invalid', '✗', 'NOT FOUND', 'Card ' + q + ' is not registered or inactive.');
         } else {
-            btn.textContent = k;
-            btn.addEventListener('click', function () { rfidInput.value += k; rfidInput.focus(); });
+          showResult('error', '⚠', 'SYSTEM UNAVAILABLE', data.error || 'Could not reach PDK.io — contact IT.');
         }
-        keypadEl.appendChild(btn);
-    });
+      })
+      .catch(function(){ showResult('error', '⚠', 'NETWORK ERROR', 'Could not reach the server. Check your connection.'); });
+  }
 
-    /* Session */
-    function readSession()  { try { return sessionStorage.getItem('sop_auth') === '1'; } catch(e) { return false; } }
-    function writeSession(v){ try { v ? sessionStorage.setItem('sop_auth','1') : sessionStorage.removeItem('sop_auth'); } catch(e){} }
-
-    function showLogin() {
-        loginScreen.classList.add('active');
-        checkerScreen.classList.remove('active');
-        pwInput.value = '';
-        loginError.classList.remove('visible');
-        setTimeout(function(){ pwInput.focus(); }, 80);
+  function showResult(type, icon, title, sub, loading) {
+    resultBox.className = '';
+    if (loading) {
+      resultIcon.textContent = '⟳'; resultTitle.textContent = title; resultSub.textContent = sub;
+      resultBox.className = 'error'; resultBox.style.display = 'block';
+      resultCountdown.textContent = ''; retryBtn.style.display = 'none'; return;
     }
-    function showChecker() {
-        loginScreen.classList.remove('active');
-        checkerScreen.classList.add('active');
-        setTimeout(function(){ rfidInput.focus(); }, 80);
-    }
+    resultIcon.textContent  = icon;
+    resultTitle.textContent = title;
+    resultSub.textContent   = sub;
+    var cls = type === 'valid' ? 'valid' : type === 'invalid' ? 'invalid' : 'error';
+    resultBox.className = cls; resultBox.style.display = 'block';
+    retryBtn.className = 'btn-retry ' + cls; retryBtn.style.display = 'inline-block';
+    checkBtn.disabled = false; keypadCheckBtn.disabled = false;
 
-    readSession() ? showChecker() : showLogin();
+    var secs = AUTO_RESET_SEC;
+    resultCountdown.textContent = 'Auto-reset in ' + secs + '…';
+    clearTimeout(resetTimer);
+    resetTimer = setInterval(function() {
+      secs--;
+      if (secs <= 0) { clearInterval(resetTimer); resetUI(); }
+      else { resultCountdown.textContent = 'Auto-reset in ' + secs + '…'; }
+    }, 1000);
+  }
 
-    /* Login */
-    loginForm.addEventListener('submit', function(e){
-        e.preventDefault();
-        if (pwInput.value === PASSWORD) {
-            writeSession(true); showChecker();
-        } else {
-            loginError.classList.add('visible');
-            loginCard.classList.add('shake');
-            pwInput.value = ''; pwInput.focus();
-            setTimeout(function(){ loginCard.classList.remove('shake'); }, 480);
-        }
-    });
-    pwInput.addEventListener('input', function(){ loginError.classList.remove('visible'); });
-
-    /* Sign out */
-    signoutBtn.addEventListener('click', function(){ writeSession(false); cancelCountdown(); showLogin(); });
-
-    /* Controls */
-    clearBtn.addEventListener('click', function(){ rfidInput.value = ''; rfidInput.focus(); });
-    checkBtn.addEventListener('click', triggerCheck);
-    rfidInput.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); triggerCheck(); } });
-
-    function triggerCheck() {
-        var val = rfidInput.value.trim();
-        if (!val) {
-            rfidInput.classList.add('shake');
-            setTimeout(function(){ rfidInput.classList.remove('shake'); }, 480);
-            rfidInput.focus(); return;
-        }
-        cancelCountdown(); doCheck(val);
-    }
-
-    /* Countdown */
-    function startCountdown(seconds, cb) {
-        var rem = seconds;
-        countdownTimer = setInterval(function(){
-            rem--;
-            var el = document.getElementById('cd-display');
-            if (el) el.textContent = 'Auto-reset in ' + rem + '\u2026';
-            if (rem <= 0) { cancelCountdown(); cb(); }
-        }, 1000);
-    }
-    function cancelCountdown() { if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; } }
-
-    /* Render */
-    function setResult(cls, html) {
-        resultZone.className = 'result-zone ' + (cls || '');
-        resultContent.innerHTML = html;
-        resultContent.classList.remove('fade-up');
-        void resultContent.offsetWidth;
-        resultContent.classList.add('fade-up');
-    }
-
-    function showIdle() {
-        cancelCountdown(); rfidInput.value = '';
-        setResult('', '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#4b5563" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="10" height="10" rx="1.5"/></svg><p class="result-idle">Results will appear here after scan</p>');
-        setTimeout(function(){ rfidInput.focus(); }, 80);
-    }
-
-    function showLoading() {
-        setResult('', '<svg class="spin" width="52" height="52" viewBox="0 0 52 52" fill="none"><circle cx="26" cy="26" r="22" stroke="rgba(255,255,255,0.15)" stroke-width="4" fill="none"/><path d="M26 4 A22 22 0 0 1 48 26" stroke="#c9a84c" stroke-width="4" stroke-linecap="round" fill="none"/></svg><p class="result-sub" style="margin-top:.6rem">Checking PDK system\u2026</p>');
-    }
-
-    function showGood() {
-        setResult('rz-good',
-            '<svg width="72" height="72" viewBox="0 0 72 72" fill="none"><circle cx="36" cy="36" r="32" stroke="white" stroke-width="4" fill="none"/><path d="M20 36 L31 47 L52 26" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>' +
-            '<p class="result-title">\u2713 VALID ACCESS</p>' +
-            '<p class="result-sub">Card found in SOP system</p>' +
-            '<button id="rz-btn" class="result-action-btn rb-green" type="button">SCAN NEXT</button>' +
-            '<p id="cd-display" class="result-countdown">Auto-reset in ' + AUTO_GOOD + '\u2026</p>'
-        );
-        document.getElementById('rz-btn').addEventListener('click', function(){ cancelCountdown(); showIdle(); });
-        startCountdown(AUTO_GOOD, showIdle);
-    }
-
-    function showBad() {
-        setResult('rz-bad',
-            '<svg width="72" height="72" viewBox="0 0 72 72" fill="none"><circle cx="36" cy="36" r="32" stroke="white" stroke-width="4" fill="none"/><path d="M24 24 L48 48" stroke="white" stroke-width="5" stroke-linecap="round"/><path d="M48 24 L24 48" stroke="white" stroke-width="5" stroke-linecap="round"/></svg>' +
-            '<p class="result-title">\u2717 NOT FOUND</p>' +
-            '<p class="result-sub">Card not registered in SOP system</p>' +
-            '<button id="rz-btn" class="result-action-btn rb-red" type="button">TRY AGAIN</button>' +
-            '<p id="cd-display" class="result-countdown">Auto-reset in ' + AUTO_BAD + '\u2026</p>'
-        );
-        document.getElementById('rz-btn').addEventListener('click', function(){ cancelCountdown(); showIdle(); });
-        startCountdown(AUTO_BAD, showIdle);
-    }
-
-    function showError(msg) {
-        setResult('rz-error',
-            '<svg width="60" height="60" viewBox="0 0 60 60" fill="none"><path d="M30 6 L4 54 L56 54 Z" stroke="white" stroke-width="4" stroke-linejoin="round" fill="none"/><path d="M30 24 L30 38" stroke="white" stroke-width="4" stroke-linecap="round"/><circle cx="30" cy="45" r="2.5" fill="white"/></svg>' +
-            '<p class="result-title" style="font-size:1.3rem">\u26A0 SYSTEM UNAVAILABLE</p>' +
-            '<p class="result-sub">' + (msg || 'Could not reach PDK.io \u2014 check network or contact IT.') + '</p>' +
-            '<button id="rz-btn" class="result-action-btn rb-amber" type="button">TRY AGAIN</button>' +
-            '<p id="cd-display" class="result-countdown">Auto-reset in ' + AUTO_ERR + '\u2026</p>'
-        );
-        document.getElementById('rz-btn').addEventListener('click', function(){ cancelCountdown(); showIdle(); });
-        startCountdown(AUTO_ERR, showIdle);
-    }
-
-    /* API call */
-    function doCheck(rfid) {
-        showLoading();
-        fetch(API_URL + '?q=' + encodeURIComponent(rfid))
-            .then(function(res){
-                return res.json().then(function(data){ return { ok: res.ok, status: res.status, data: data }; });
-            })
-            .then(function(r){
-                if (!r.ok) { showError(r.data && r.data.error ? r.data.error : 'Server error (' + r.status + ')'); return; }
-                r.data.found ? showGood() : showBad();
-            })
-            .catch(function(err){
-                console.warn('[SOP] fetch error:', err.message);
-                showError('Network error \u2014 could not reach server.');
-            });
-    }
-
+  function resetUI() {
+    clearInterval(resetTimer);
+    rfidInput.value = ''; resultBox.style.display = 'none'; resultBox.className = '';
+    resultCountdown.textContent = ''; checkBtn.disabled = false; keypadCheckBtn.disabled = false;
+    rfidInput.focus();
+  }
 })();
 </script>
-
 </body>
 </html>

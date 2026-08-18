@@ -1,0 +1,144 @@
+<html>
+  <head>
+    <title>Unit QR Viewer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        margin: 0;
+        padding: 2rem;
+        background: #f5f7fa;
+        color: #333;
+      }
+
+      h1 {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+        color: #005f99;
+      }
+
+      #unitForm input {
+        font-size: 1.5rem;
+        padding: 12px;
+        width: 80%;
+        max-width: 300px;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+      }
+
+      #unitForm button {
+        margin-top: 1rem;
+        font-size: 1.4rem;
+        padding: 12px 24px;
+        background: #0077cc;
+        color: white;
+        border: none;
+        border-radius: 8px;
+      }
+
+      #unitForm button:hover {
+        background: #005fa3;
+      }
+
+      #qrBox img {
+        width: 90%;
+        max-width: 500px;
+        height: auto;
+        border-radius: 12px;
+        margin-top: 1rem;
+        box-shadow: 0px 4px 12px rgba(0,0,0,0.2);
+      }
+    </style>
+  </head>
+
+  <body>
+
+    <h1>Shores of Panama</h1>
+	<h2>Unit QR Viewer</h2>
+
+	<form id="unitForm" style="display:flex; flex-direction:column; align-items:center;">
+	  <input id="unitInput" type="text" placeholder="Enter Unit Number" autofocus>
+	  <br>
+
+	  <div style="display:flex; align-items:center; gap:20px;">
+		<button type="submit">Show QR</button>
+
+		<!-- Countdown clock next to button -->
+		<span id="countdown" style="font-size:1.6rem; font-weight:bold; color:#0077cc; display:none;">
+		  20
+		</span>
+	  </div>
+	</form>
+	
+	<div id="qrBox" style="display:none;">
+	  <h2 id="unitLabel"></h2>
+	  <img id="qrImage">
+	</div>
+
+
+	<script>
+	  const form = document.getElementById("unitForm");
+	  const input = document.getElementById("unitInput");
+	  const qrBox = document.getElementById("qrBox");
+	  const unitLabel = document.getElementById("unitLabel");
+	  const qrImage = document.getElementById("qrImage");
+	  const countdown = document.getElementById("countdown");
+
+	  let timer = null;
+
+	  form.addEventListener("submit", (e) => {
+		e.preventDefault();
+
+		const unit = input.value.trim();
+		if (!unit) {
+		  alert("Please enter a unit number.");
+		  return;
+		}
+
+		const url = `/units/unit${unit}.png`;
+
+		unitLabel.textContent = `Unit ${unit}`;
+		qrImage.src = url;
+
+		// Show QR box
+		qrBox.style.display = "block";
+
+		// Show countdown next to button
+		countdown.style.display = "inline";
+		countdown.textContent = "20";
+
+		// Redirect if PNG missing
+		qrImage.onerror = () => {
+		  window.location.href = "/qr-not-found";
+		};
+
+		// Clear previous timer
+		if (timer) clearInterval(timer);
+
+		let remaining = 20;
+
+		timer = setInterval(() => {
+		  remaining--;
+		  countdown.textContent = remaining;
+
+		  if (remaining <= 0) {
+			clearInterval(timer);
+
+			// Hide QR
+			qrBox.style.display = "none";
+
+			// Hide countdown
+			countdown.style.display = "none";
+
+			// Reset input
+			input.value = "";
+			input.focus();
+		  }
+		}, 1000);
+	  });
+	</script>
+
+  </body>
+</html>

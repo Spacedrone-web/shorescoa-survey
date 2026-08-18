@@ -1,0 +1,97 @@
+<html>
+  <head>
+    <title>QR Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        margin: 0;
+        padding: 2rem;
+        background: #f5f7fa;
+        color: #333;
+      }
+
+      h1 {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+        color: #005f99; /* SOP blue */
+      }
+
+      #loginForm input {
+        font-size: 1.5rem;
+        padding: 12px;
+        width: 80%;
+        max-width: 300px;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+      }
+
+      #loginForm button {
+        margin-top: 1rem;
+        font-size: 1.4rem;
+        padding: 12px 24px;
+        background: #0077cc;
+        color: white;
+        border: none;
+        border-radius: 8px;
+      }
+
+      #loginForm button:hover {
+        background: #005fa3;
+      }
+    </style>
+  </head>
+
+  <body>
+
+    <h1>Shores of Panama</h1>
+	<h2>Unit QR Viewer</h2>
+
+    <form id="loginForm">
+      <input 
+        id="password" 
+        type="password" 
+        placeholder="Password"
+        autofocus
+      >
+      <br>
+      <button type="submit">Login</button>
+    </form>
+
+    <script>
+      const HASH = "21cedfef481c0e0cc8aa08897ca0232f065269c8a2ad607f79e9f019f0808fb8";
+
+      async function sha256(str) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(str);
+        const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+      }
+
+      const form = document.getElementById("loginForm");
+      const passwordInput = document.getElementById("password");
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const password = passwordInput.value.trim();
+        if (!password) {
+          alert("Enter password");
+          return;
+        }
+
+        const hashed = await sha256(password);
+
+        if (hashed === HASH) {
+          window.location.href = "/qr-unit";
+        } else {
+          alert("Invalid password");
+        }
+      });
+    </script>
+
+  </body>
+</html>
