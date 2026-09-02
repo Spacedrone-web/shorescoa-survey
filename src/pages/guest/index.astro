@@ -39,6 +39,17 @@ const rows = await DB.prepare(`
   ORDER BY arrivalDate, unit, createdAt
 `).bind(fromDate, toDate).all();
 
+function groupByUnit(rows) {
+  const map = new Map();
+  for (const r of rows) {
+    if (!map.has(r.unit)) map.set(r.unit, []);
+    map.get(r.unit).push(r);
+  }
+  return map;
+}
+
+const grouped = groupByUnit(rows.results || []);
+
 // Format helpers (CST)
 function toCSTDate(dateStr) {
   if (!dateStr) return "";
@@ -63,18 +74,22 @@ function toCSTDateTime(dateStr) {
 function shouldDisplay(row, showAllFlag) {
   if (showAllFlag) return true;
 
-  const hasRFID =
-    row.externalCredentialNumber &&
-    String(row.externalCredentialNumber).trim() !== "";
+  const unitRows = grouped.get(row.unit) || [];
 
-  const isWristband =
-    row.passType &&
-    String(row.passType).toLowerCase().includes("wrist");
+  const hasRegistrationFee = unitRows.some(
+    r => r.passInfo_name === "Registration Fee"
+  );
 
-  // Hide only when BOTH RFID and wristband are occupied
-  if (hasRFID && isWristband) return false;
+  const hasWristband = unitRows.some(
+    r => r.passInfo_name.toLowerCase().includes("wrist")
+  );
 
-  return true;
+  // Default rules:
+  // Show units with Registration Fee AND no wristbands
+  if (hasRegistrationFee && !hasWristband) return true;
+
+  // Otherwise hide
+  return false;
 }
 
 const filteredRows = (rows?.results || []).filter((row) =>
@@ -227,11 +242,6 @@ const visibleCount = filteredRows.length;
       <div class="guest-banner-title">Guest Reservations</div>
     </div>
 
-    <div class="banner-right">
-      <div class="parking-banner">
-        Units 515 &nbsp;&nbsp; Dedicated 470 &nbsp;&nbsp; Yellow 281 &nbsp;&nbsp; of 274
-      </div>
-
       <button class="nav-btn" onclick="window.location.href='/status'">
         Return to Status
       </button>
@@ -304,10 +314,12 @@ const visibleCount = filteredRows.length;
               <td>{toCSTDate(row.arrivalDate)}</td>
               <td>{toCSTDate(row.departureDate)}</td>
               <td>
-                {created.date}<br />
-                {created.time}
-              </td>
-              <td>{row.guest_firstName} {row.guest_lastName}</td>
+                {created.date} {created.time}</td>
+			  <td>
+			    {row.passInfo_name === "Registration Fee"
+				  ? `${row.guest_firstName} ${row.guest_lastName}`
+				  : ""}
+			  </td>
               <td>{row.passInfo_name}</td>
               <td>{row.externalCredentialNumber}</td>
             </tr>
