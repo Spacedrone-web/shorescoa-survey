@@ -25,8 +25,8 @@ const rows = await DB.prepare(`
     passId,
     registrationId,
     unit,
-    arrivalDate,
-    departureDate,
+    substr(arrivalDate, 1, 10) AS arrivalDate,
+    substr(departureDate, 1, 10) AS departureDate,
     createdAt,
     guest_firstName,
     guest_lastName,
@@ -34,7 +34,8 @@ const rows = await DB.prepare(`
     passInfo_name,
     externalCredentialNumber
   FROM guest_reg
-  WHERE arrivalDate >= ? AND arrivalDate <= ?
+  WHERE substr(arrivalDate, 1, 10) >= ?
+    AND substr(arrivalDate, 1, 10) <= ?
   ORDER BY arrivalDate, unit, createdAt
 `).bind(fromDate, toDate).all();
 
