@@ -290,7 +290,7 @@ const visibleCount = filteredRows.length;
           <th>Departure</th>
           <th>Created At</th>
           <th>Guest</th>
-          <th>Pass Type</th>
+          <th>Band Type</th>
           <th>RFID</th>
         </tr>
       </thead>
@@ -308,7 +308,7 @@ const visibleCount = filteredRows.length;
                 {created.time}
               </td>
               <td>{row.guest_firstName} {row.guest_lastName}</td>
-              <td>{row.passType || row.passInfo_name}</td>
+              <td>{row.passInfo_name}</td>
               <td>{row.externalCredentialNumber}</td>
             </tr>
           );
