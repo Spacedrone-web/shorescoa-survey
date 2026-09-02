@@ -19,30 +19,51 @@ if (Astro.request.method === "POST") {
 
     <style>
       body {
-		font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-	    background: #0f172a;
-	    color: #e5e7eb;
-	    display: flex;
-	    justify-content: center;
-	    align-items: flex-start;
-	    min-height: 100vh;
-	    padding: 0;     /* ⭐ REMOVE FRAME */
-	    margin: 0;
-	  } 
-
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #0f172a;
+        color: #e5e7eb;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        min-height: 100vh;
+        padding: 0;
+        margin: 0;
+      }
 
       .card {
         background: #111827;
         border-radius: 0.75rem;
         padding: 2rem;
         width: 100%;
-        max-width: 1800px;   /* ⭐ Wider container */
+        max-width: 1800px;
         box-shadow: 0 20px 40px rgba(0,0,0,0.5);
       }
 
+      .top-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+      }
+
+      .nav-btn {
+        background: #1e73be;
+        color: white;
+        border: none;
+        padding: 10px 18px;
+        border-radius: 6px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+
+      .nav-btn:hover {
+        background: #155a94;
+      }
+
       h1 {
-        margin-top: 0;
-        margin-bottom: 1rem;
+        margin: 0;
         font-size: 1.75rem;
       }
 
@@ -79,7 +100,17 @@ if (Astro.request.method === "POST") {
 
   <body>
     <div class="card">
-      <h1>ShoresCOA Status</h1>
+
+      <!-- ⭐ NEW TOP BAR WITH BUTTON -->
+      <div class="top-bar">
+        <h1>ShoresCOA Status</h1>
+
+        { ok && (
+          <button class="nav-btn" onclick="window.location.href='/guest'">
+            Guest Registration
+          </button>
+        )}
+      </div>
 
       { !ok && (
         <>
@@ -89,7 +120,7 @@ if (Astro.request.method === "POST") {
             <button type="submit">Enter</button>
           </form>
         </>
-      ) }
+      )}
 
       { ok && <StatusDashboard /> }
     </div>
