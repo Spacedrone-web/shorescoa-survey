@@ -1,9 +1,9 @@
 ---
-// (Your entire SSR logic exactly as provided)
 Astro.response.headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
 Astro.response.headers.set("Pragma", "no-cache");
 Astro.response.headers.set("Expires", "0");
 
+// Force SSR to operate in CST/CDT
 const CST_NOW = new Date().toLocaleString("en-US", { timeZone: "America/Chicago" });
 console.log("SSR CST Time:", CST_NOW);
 
@@ -18,17 +18,234 @@ const DB = env.DB;
 console.log("DB binding:", !!DB);
 if (!DB) throw new Error("DB binding not available");
 
-// ⭐ ALL YOUR DB QUERIES AND LOGIC REMAIN EXACTLY THE SAME
-// (No edits made here — full logic preserved)
+// ---------------------------------------------------------
+// LAST PIPELINE RUN
+// ---------------------------------------------------------
+const lastSync = await DB.prepare(`
+  SELECT run_at, gathered, pushed, failed, duration_ms
+  FROM pipeline_runs
+  ORDER BY run_at DESC
+  LIMIT 1
+`).first();
 
 // ---------------------------------------------------------
-// (Your entire DB logic, helpers, calculations, etc.)
+// CURRENT RENTALS (CST)
 // ---------------------------------------------------------
+const currentRentals = await DB.prepare(`
+  SELECT unit, arrival, departure, created
+  FROM guests
+  WHERE arrival <= date('now','-5 hours') AND departure > date('now','-5 hours')
+`).all();
+
+// ---------------------------------------------------------
+// HELPERS
+// ---------------------------------------------------------
+const STACK_MAP = {
+  "01": "3 Bedroom","02": "1 Bedroom","03": "2 Bedroom","04": "2 Bedroom",
+  "05": "Studio","06": "Studio","07": "2 Bedroom","08": "1 Bedroom",
+  "09": "1 Bedroom","10": "2 Bedroom","11": "1 Bedroom","12": "1 Bedroom",
+  "13": "1 Bedroom","14": "1 Bedroom","15": "1 Bedroom","16": "1 Bedroom",
+  "17": "1 Bedroom","18": "2 Bedroom","19": "2 Bedroom","20": "2 Bedroom",
+  "21": "2 Bedroom","22": "2 Bedroom","23": "2 Bedroom","24": "2 Bedroom",
+  "25": "1 Bedroom","26": "1 Bedroom","27": "1 Bedroom","28": "3 Bedroom",
+  "29": "2 Bedroom","30": "1 Bedroom","31": "3 Bedroom"
+};
+
+const TOTAL = {
+  "Studio": 41,
+  "1 Bedroom": 292,
+  "2 Bedroom": 231,
+  "3 Bedroom": 61
+};
+
+const ALLOWED = {
+  "Studio": 1,
+  "1 Bedroom": 1,
+  "2 Bedroom": 2,
+  "3 Bedroom": 2
+};
+
+function parseUnit(raw) {
+  if (!raw) return { unitNum: null, type: null };
+  const base = raw.split(" ")[0];
+  const unitNum = parseInt(base, 10);
+  if (Number.isNaN(unitNum)) return { unitNum: null, type: null };
+  const stack = base.slice(-2).padStart(2, "0");
+  return { unitNum, type: STACK_MAP[stack] ?? null };
+}
+
+function pct(r, t) { return t ? (r / t) * 100 : 0; }
+function statusLabel(p) {
+  if (p < 60) return "Low (Green)";
+  if (p < 85) return "Moderate (Yellow)";
+  return "High (Red)";
+}
+
+// ---------------------------------------------------------
+//  Est. Total Guests (Native D1 Binding)
+// ---------------------------------------------------------
+const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
+
+console.log("DEBUG D1 Binding:", DB ? "FOUND" : "NOT FOUND");
+
+let todaysGuestCount = 0;
+
+try {
+  const result = await DB.prepare(
+    "SELECT count FROM guest_wristbands WHERE date = ?"
+  ).bind(today).all();
+
+  todaysGuestCount = result?.results?.[0]?.count ?? 0;
+
+} catch (err) {
+  console.error("Failed to load guest_wristbands:", err);
+  todaysGuestCount = 0;
+}
+
+// ---------------------------------------------------------
+// RENTAL COUNTS
+// ---------------------------------------------------------
+const rentedByType = {
+  "Studio": 0,
+  "1 Bedroom": 0,
+  "2 Bedroom": 0,
+  "3 Bedroom": 0
+};
+
+let yellowUsed = 0;
+const yellowTotal = 274;
+
+for (const row of (currentRentals?.results || [])) {
+  const { unitNum, type } = parseUnit(row.unit);
+  if (!type || !unitNum) continue;
+
+  rentedByType[type]++;
+
+  const dedicated = DEDICATED[unitNum] ?? 0;
+  const allowed = ALLOWED[type] ?? 0;
+
+  yellowUsed += Math.max(0, allowed - dedicated);
+}
+
+// ---------------------------------------------------------
+// SAME-DAY CHECK-IN (CST)
+// ---------------------------------------------------------
+const arrivalsTodayRow = await DB.prepare(`
+  SELECT COUNT(*) AS count
+  FROM guests
+  WHERE arrival = date('now','-5 hours')
+`).first();
+
+const sameDayRow = await DB.prepare(`
+  SELECT COUNT(*) AS count
+  FROM guests
+  WHERE arrival = date('now','-5 hours') AND arrival = date(created)
+`).first();
+
+const totalTodayCount = arrivalsTodayRow?.count ?? 0;
+const sameDayCount = sameDayRow?.count ?? 0;
+const sameDayPct = pct(sameDayCount, totalTodayCount);
+
+// ---------------------------------------------------------
+// SAME-DAY CHECK-IN BY MANAGER (Top 5, excluding Self Managed)
+// ---------------------------------------------------------
+const sameDayManagers = await DB.prepare(`
+  SELECT 
+    invitedBy_companyName AS manager,
+    COUNT(*) AS same_day_checkins
+  FROM guests
+  WHERE arrival = date('now','-5 hours')
+    AND arrival = date(created)
+    AND invitedBy_companyName NOT LIKE '%Self Managed%'
+  GROUP BY manager
+  ORDER BY same_day_checkins DESC
+  LIMIT 5;
+`).all();
+
+// ---------------------------------------------------------
+// DEPARTING TODAY (CST)
+// ---------------------------------------------------------
+const departingTodayRow = await DB.prepare(`
+  SELECT COUNT(*) AS count
+  FROM guests
+  WHERE departure = date('now','-5 hours')
+`).first();
+
+const departingTodayCount = departingTodayRow?.count ?? 0;
+
+// ---------------------------------------------------------
+// ARRIVING TOMORROW (CST)
+// ---------------------------------------------------------
+const arrivingTomorrowRow = await DB.prepare(`
+  SELECT COUNT(*) AS count
+  FROM guests
+  WHERE arrival = date('now','-5 hours','+1 day')
+`).first();
+
+const arrivingTomorrowCount = arrivingTomorrowRow?.count ?? 0;
+
+// ---------------------------------------------------------
+// TOTAL OCCUPANCY
+// ---------------------------------------------------------
+const studioPct = pct(rentedByType["Studio"], TOTAL["Studio"]);
+const onePct = pct(rentedByType["1 Bedroom"], TOTAL["1 Bedroom"]);
+const twoPct = pct(rentedByType["2 Bedroom"], TOTAL["2 Bedroom"]);
+const threePct = pct(rentedByType["3 Bedroom"], TOTAL["3 Bedroom"]);
+const yellowPct = pct(yellowUsed, yellowTotal);
+
+const totalRented =
+  rentedByType["Studio"] +
+  rentedByType["1 Bedroom"] +
+  rentedByType["2 Bedroom"] +
+  rentedByType["3 Bedroom"];
+
+const totalUnits =
+  TOTAL["Studio"] +
+  TOTAL["1 Bedroom"] +
+  TOTAL["2 Bedroom"] +
+  TOTAL["3 Bedroom"];
+
+const totalPct = pct(totalRented, totalUnits);
+
+// ---------------------------------------------------------
+// MANAGER OCCUPANCY % (≥ 6 units, Top 5)
+// ---------------------------------------------------------
+const managerOccupancy = await DB.prepare(`
+  WITH managed AS (
+    SELECT 
+      invitedBy_companyName AS manager,
+      COUNT(DISTINCT unit) AS total_units
+    FROM guests
+    WHERE invitedBy_companyName NOT LIKE '%Self Managed%'
+    GROUP BY invitedBy_companyName
+    HAVING total_units >= 6
+  )
+  SELECT
+    managed.manager,
+    managed.total_units,
+    (
+      SELECT COUNT(DISTINCT unit)
+      FROM guests
+      WHERE arrival <= DATE('now','-5 hours')
+        AND departure >= DATE('now','-5 hours')
+        AND invitedBy_companyName = managed.manager
+    ) AS rented_today,
+    ROUND(
+      (
+        SELECT COUNT(DISTINCT unit)
+        FROM guests
+        WHERE arrival <= DATE('now','-5 hours')
+          AND departure >= DATE('now','-5 hours')
+          AND invitedBy_companyName = managed.manager
+      ) * 1.0 / managed.total_units * 100,
+      2
+    ) AS occupancy_pct
+  FROM managed
+  ORDER BY occupancy_pct DESC
+  LIMIT 5;
+`).all();
 
 ---
-
-<!-- ⭐ LATER we will add the "Return to Status" button here when the guest page is built -->
-
 <div style="margin-top: 1.5rem;">
   <p style="margin-bottom: 0.5rem; color:#9ca3af;">
     Status as of {new Date().toLocaleString("en-US", { timeZone: "America/Chicago" })}
@@ -57,104 +274,110 @@ if (!DB) throw new Error("DB binding not available");
       width: 100%;
       max-width: 1800px;
       margin: 0 auto;
+
+      /* ⭐ Desktop: 3 columns */
       grid-template-columns: repeat(3, minmax(300px, 1fr));
     "
   >
 
-    <style>
-      @media (max-width: 1400px) {
-        .status-grid {
-          grid-template-columns: repeat(2, minmax(300px, 1fr));
-        }
+
+  <style>
+    /* ⭐ Tablet: 2 columns */
+    @media (max-width: 1400px) {
+      .status-grid {
+        grid-template-columns: repeat(2, minmax(300px, 1fr));
       }
+    }
 
-      @media (max-width: 800px) {
-        .status-grid {
-          grid-template-columns: repeat(1, minmax(250px, 1fr));
-        }
+    /* ⭐ Phone: 1 column */
+    @media (max-width: 800px) {
+      .status-grid {
+        grid-template-columns: repeat(1, minmax(250px, 1fr));
       }
-    </style>
+    }
+  </style>
 
-    <!-- ⭐ ALL StatusCard components unchanged -->
-    <StatusCard 
-      label="Yellow Parking"
-      value={`${yellowUsed}/${yellowTotal}`}
-      percent={yellowPct}
-      status={statusLabel(yellowPct)}
-      note="Yellow spaces in use, Does not accout for BB(Should be 12 spots) or Staff"
-    />
+  
+  <StatusCard 
+    label="Yellow Parking"
+    value={`${yellowUsed}/${yellowTotal}`}
+    percent={yellowPct}
+    status={statusLabel(yellowPct)}
+    note="Yellow spaces in use, Does not accout for BB(Should be 12 spots) or Staff"
+  />
 
-    <StatusCard 
-      label="Same-Day Check-ins"
-      value={`${sameDayCount}/${totalTodayCount}`}
-      percent={sameDayPct}
-      status={statusLabel(sameDayPct)}
-      note="Arrival date matches created date"
-      managers={sameDayManagers.results.map(m => ({
-        label: m.manager
-      }))}
-    />
+  <StatusCard 
+    label="Same-Day Check-ins"
+    value={`${sameDayCount}/${totalTodayCount}`}
+    percent={sameDayPct}
+    status={statusLabel(sameDayPct)}
+    note="Arrival date matches created date"
+    managers={sameDayManagers.results.map(m => ({
+      label: m.manager
+    }))}
+  />
 
-    <StatusCard 
-      label="Departing Today"
-      value={`${departingTodayCount}`}
-      percent={0}
-      status="Info"
-      note="Guests leaving today"
-    />
+  <StatusCard 
+    label="Departing Today"
+    value={`${departingTodayCount}`}
+    percent={0}
+    status="Info"
+    note="Guests leaving today"
+  />
 
-    <StatusCard 
-      label="Arriving Tomorrow"
-      value={`${arrivingTomorrowCount}`}
-      percent={0}
-      status="Info"
-      note="Forecast arrivals"
-    />
+  <StatusCard 
+    label="Arriving Tomorrow"
+    value={`${arrivingTomorrowCount}`}
+    percent={0}
+    status="Info"
+    note="Forecast arrivals"
+  />
 
-    <StatusCard 
-      label="Studio"
-      value={`${rentedByType["Studio"]}/${TOTAL["Studio"]}`}
-      percent={studioPct}
-      status={statusLabel(studioPct)}
-      note="Rented / Available"
-    />
+  <StatusCard 
+    label="Studio"
+    value={`${rentedByType["Studio"]}/${TOTAL["Studio"]}`}
+    percent={studioPct}
+    status={statusLabel(studioPct)}
+    note="Rented / Available"
+  />
 
-    <StatusCard 
-      label="1 Bedroom"
-      value={`${rentedByType["1 Bedroom"]}/${TOTAL["1 Bedroom"]}`}
-      percent={onePct}
-      status={statusLabel(onePct)}
-      note="Rented / Available"
-    />
+  <StatusCard 
+    label="1 Bedroom"
+    value={`${rentedByType["1 Bedroom"]}/${TOTAL["1 Bedroom"]}`}
+    percent={onePct}
+    status={statusLabel(onePct)}
+    note="Rented / Available"
+  />
 
-    <StatusCard 
-      label="2 Bedroom"
-      value={`${rentedByType["2 Bedroom"]}/${TOTAL["2 Bedroom"]}`}
-      percent={twoPct}
-      status={statusLabel(twoPct)}
-      note="Rented / Available"
-    />
+  <StatusCard 
+    label="2 Bedroom"
+    value={`${rentedByType["2 Bedroom"]}/${TOTAL["2 Bedroom"]}`}
+    percent={twoPct}
+    status={statusLabel(twoPct)}
+    note="Rented / Available"
+  />
 
-    <StatusCard 
-      label="3 Bedroom"
-      value={`${rentedByType["3 Bedroom"]}/${TOTAL["3 Bedroom"]}`}
-      percent={threePct}
-      status={statusLabel(threePct)}
-      note="Rented / Available"
-    />
+  <StatusCard 
+    label="3 Bedroom"
+    value={`${rentedByType["3 Bedroom"]}/${TOTAL["3 Bedroom"]}`}
+    percent={threePct}
+    status={statusLabel(threePct)}
+    note="Rented / Available"
+  />
 
-    <StatusCard 
-      label="Total Occupancy"
-      value={`${totalRented}/${totalUnits}/${todaysGuestCount}`}
-      percent={totalPct}
-      status={statusLabel(totalPct)}
-      note="Rented / Available / Est Guests"
-      managers={managerOccupancy.results.map(m => ({
-        label: m.manager,
-        total: m.total_units,
-        rented: m.rented_today
-      }))}
-    />
+  <StatusCard 
+    label="Total Occupancy"
+    value={`${totalRented}/${totalUnits}/${todaysGuestCount}`}
+    percent={totalPct}
+    status={statusLabel(totalPct)}
+    note="Rented / Available / Est Guests"
+    managers={managerOccupancy.results.map(m => ({
+      label: m.manager,
+      total: m.total_units,
+      rented: m.rented_today
+    }))}
+   />
 
-  </div>
+</div>
+
 </div>
