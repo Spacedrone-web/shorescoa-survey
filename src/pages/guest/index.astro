@@ -38,6 +38,26 @@ const rows = await DB.prepare(`
   ORDER BY arrivalDate, unit, createdAt
 `).bind(fromDate, toDate).all();
 
+// Format helpers (CST)
+function toCSTDate(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("en-US", { timeZone: "America/Chicago" });
+}
+
+function toCSTDateTime(dateStr) {
+  if (!dateStr) return { date: "", time: "" };
+  const d = new Date(dateStr);
+  return {
+    date: d.toLocaleDateString("en-US", { timeZone: "America/Chicago" }),
+    time: d.toLocaleTimeString("en-US", {
+      timeZone: "America/Chicago",
+      hour: "numeric",
+      minute: "2-digit"
+    })
+  };
+}
+
 // Filtering logic
 function shouldDisplay(row, showAllFlag) {
   if (showAllFlag) return true;
@@ -275,17 +295,23 @@ const visibleCount = filteredRows.length;
       </thead>
 
       <tbody>
-        {filteredRows.map((row) => (
-          <tr>
-            <td>{row.unit}</td>
-            <td>{row.arrivalDate}</td>
-            <td>{row.departureDate}</td>
-            <td>{row.createdAt}</td>
-            <td>{row.guest_firstName} {row.guest_lastName}</td>
-            <td>{row.passType || row.passInfo_name}</td>
-            <td>{row.externalCredentialNumber}</td>
-          </tr>
-        ))}
+        {filteredRows.map((row) => {
+          const created = toCSTDateTime(row.createdAt);
+          return (
+            <tr>
+              <td>{row.unit}</td>
+              <td>{toCSTDate(row.arrivalDate)}</td>
+              <td>{toCSTDate(row.departureDate)}</td>
+              <td>
+                {created.date}<br />
+                {created.time}
+              </td>
+              <td>{row.guest_firstName} {row.guest_lastName}</td>
+              <td>{row.passType || row.passInfo_name}</td>
+              <td>{row.externalCredentialNumber}</td>
+            </tr>
+          );
+        })}
 
         {filteredRows.length === 0 && (
           <tr>
