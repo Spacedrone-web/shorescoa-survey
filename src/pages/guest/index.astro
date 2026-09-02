@@ -1,14 +1,11 @@
 ---
-Astro.response.headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
-Astro.response.headers.set("Pragma", "no-cache");
-Astro.response.headers.set("Expires", "0");
+import Database from "better-sqlite3";
+
+// ⭐ Your real SQLite database path
+const DB = new Database("/home/jim/symliv-sync/symliv.db");
 
 // Force CST/CDT for date defaults
 const CST_TODAY = new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
-
-const env = (Astro.locals as any).runtime?.env;
-const DB = env.DB;
-if (!DB) throw new Error("SQLite DB binding not available");
 
 // Read query params
 const url = new URL(Astro.request.url);
@@ -21,7 +18,7 @@ const toDate = toParam || CST_TODAY;
 const showAll = showAllParam === "on" || showAllParam === "1";
 
 // Query SQLite passes_raw
-const rows = await DB.prepare(`
+const stmt = DB.prepare(`
   SELECT
     address,
     arrivalDate,
@@ -35,7 +32,9 @@ const rows = await DB.prepare(`
   FROM passes_raw
   WHERE arrivalDate >= ? AND arrivalDate <= ?
   ORDER BY arrivalDate, address, createdAt
-`).bind(fromDate, toDate).all();
+`);
+
+const rows = stmt.all(fromDate, toDate);
 
 // Extract unit number from address
 function extractUnit(address) {
@@ -62,11 +61,11 @@ function shouldDisplay(row, showAllFlag) {
   return true;
 }
 
-const filteredRows = (rows?.results || []).filter((row) =>
+const filteredRows = rows.filter((row) =>
   shouldDisplay(row, showAll)
 );
 
-const totalCount = rows?.results?.length || 0;
+const totalCount = rows.length;
 const visibleCount = filteredRows.length;
 ---
 
