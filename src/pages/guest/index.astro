@@ -1,0 +1,308 @@
+---
+Astro.response.headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
+Astro.response.headers.set("Pragma", "no-cache");
+Astro.response.headers.set("Expires", "0");
+
+// Force CST/CDT for date defaults
+const CST_TODAY = new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
+
+const env = (Astro.locals as any).runtime?.env;
+const DB = env.DB;
+if (!DB) throw new Error("SQLite DB binding not available");
+
+// Read query params
+const url = new URL(Astro.request.url);
+const fromParam = url.searchParams.get("from");
+const toParam = url.searchParams.get("to");
+const showAllParam = url.searchParams.get("showAll");
+
+const fromDate = fromParam || CST_TODAY;
+const toDate = toParam || CST_TODAY;
+const showAll = showAllParam === "on" || showAllParam === "1";
+
+// Query SQLite passes_raw
+const rows = await DB.prepare(`
+  SELECT
+    address,
+    arrivalDate,
+    departureDate,
+    createdAt,
+    guest_firstName,
+    guest_lastName,
+    passType,
+    passInfo_name,
+    externalCredentialNumber
+  FROM passes_raw
+  WHERE arrivalDate >= ? AND arrivalDate <= ?
+  ORDER BY arrivalDate, address, createdAt
+`).bind(fromDate, toDate).all();
+
+// Extract unit number from address
+function extractUnit(address) {
+  if (!address) return "";
+  const parts = address.split(" ");
+  return parts[0] || "";
+}
+
+// Filtering logic
+function shouldDisplay(row, showAllFlag) {
+  if (showAllFlag) return true;
+
+  const hasRFID =
+    row.externalCredentialNumber &&
+    String(row.externalCredentialNumber).trim() !== "";
+
+  const isWristband =
+    row.passType &&
+    String(row.passType).toLowerCase().includes("wrist");
+
+  // Hide only when BOTH RFID and wristband are occupied
+  if (hasRFID && isWristband) return false;
+
+  return true;
+}
+
+const filteredRows = (rows?.results || []).filter((row) =>
+  shouldDisplay(row, showAll)
+);
+
+const totalCount = rows?.results?.length || 0;
+const visibleCount = filteredRows.length;
+---
+
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Guest Registration Summary</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    /* RESET */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+    }
+
+    /* HEADER */
+    .guest-banner {
+      width: 100%;
+      background: #1e73be;
+      color: white;
+      padding: 18px 25px;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      border-bottom: 4px solid #155a94;
+    }
+
+    .banner-left { display: flex; align-items: center; }
+    .guest-banner-logo { height: 60px; }
+
+    .banner-center { display: flex; justify-content: center; }
+    .guest-banner-title { font-size: 34px; font-weight: bold; white-space: nowrap; }
+
+    .banner-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+    }
+
+    .parking-banner {
+      background: rgba(0,0,0,0.25);
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 18px;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    .nav-btn {
+      padding: 8px 16px;
+      background: #0f766e;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .logout-btn {
+      padding: 8px 16px;
+      background: #c0392b;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    /* PAGE CONTENT */
+    h2 {
+      margin: 25px;
+      font-size: 26px;
+      color: #333;
+    }
+
+    .top-bar { margin: 0 25px 20px 25px; }
+
+    .left-controls label { margin-right: 6px; font-weight: bold; }
+    .left-controls input[type="date"] { margin-right: 12px; padding: 4px 6px; }
+
+    .btn-blue {
+      background: #1e73be;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-right: 8px;
+    }
+
+    .counts {
+      margin: 0 25px 10px 25px;
+      font-size: 14px;
+      color: #555;
+    }
+
+    /* TABLE */
+    .table-container {
+      margin: 0 25px 40px 25px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      overflow: hidden;
+    }
+
+    table { width: 100%; border-collapse: collapse; font-size: 15px; }
+    thead th {
+      background: #1e73be;
+      color: white;
+      padding: 12px 10px;
+      border-right: 2px solid #155a94;
+      font-weight: bold;
+      text-align: left;
+    }
+
+    tbody td {
+      padding: 10px;
+      border-right: 1px solid #d0d0d0;
+      border-bottom: 1px solid #dcdcdc;
+      font-size: 14px;
+    }
+
+    tbody tr:nth-child(even) { background: #f7f9fc; }
+    tbody tr:hover { background: #e8f1ff; }
+  </style>
+</head>
+
+<body>
+
+  <!-- HEADER -->
+  <div class="guest-banner">
+    <div class="banner-left">
+      <img src="/sop_logo.jpg" class="guest-banner-logo" />
+    </div>
+
+    <div class="banner-center">
+      <div class="guest-banner-title">Guest Reservations</div>
+    </div>
+
+    <div class="banner-right">
+      <div class="parking-banner">
+        Units 515 &nbsp;&nbsp; Dedicated 470 &nbsp;&nbsp; Yellow 281 &nbsp;&nbsp; of 274
+      </div>
+
+      <button class="nav-btn" onclick="window.location.href='/status'">
+        Return to Status
+      </button>
+
+      <button class="logout-btn" onclick="window.location.href='http://owners.shorescoa.com:4443/index.html'">
+        Logout
+      </button>
+    </div>
+  </div>
+
+  <!-- PAGE CONTENT -->
+  <h2>Guest Registration Summary</h2>
+
+  <div class="top-bar">
+    <form class="left-controls" method="GET">
+      <label>From:</label>
+      <input type="date" name="from" value={fromDate} />
+
+      <label>To:</label>
+      <input type="date" name="to" value={toDate} />
+
+      <input type="checkbox" name="showAll" checked={showAll} />
+      <label>Show all</label>
+
+      <button type="submit" class="btn-blue">Search</button>
+      <button type="submit" class="btn-blue">Refresh</button>
+
+      <button
+        type="button"
+        class="btn-blue"
+        onclick="
+          const today = '{CST_TODAY}';
+          this.form.from.value = today;
+          this.form.to.value = today;
+          this.form.showAll.checked = false;
+          this.form.submit();
+        "
+      >
+        Reset to Today
+      </button>
+    </form>
+  </div>
+
+  <div class="counts">
+    Showing {visibleCount} of {totalCount} registrations
+    for {fromDate} to {toDate}
+    {showAll ? "(Show all enabled)" : "(Filtered by RFID / wristband rules)"}
+  </div>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Unit</th>
+          <th>Arrival</th>
+          <th>Departure</th>
+          <th>Created At</th>
+          <th>Guest</th>
+          <th>Pass Type</th>
+          <th>RFID</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {filteredRows.map((row) => (
+          <tr>
+            <td>{extractUnit(row.address)}</td>
+            <td>{row.arrivalDate}</td>
+            <td>{row.departureDate}</td>
+            <td>{row.createdAt}</td>
+            <td>{row.guest_firstName} {row.guest_lastName}</td>
+            <td>{row.passType || row.passInfo_name}</td>
+            <td>{row.externalCredentialNumber}</td>
+          </tr>
+        ))}
+
+        {filteredRows.length === 0 && (
+          <tr>
+            <td colspan="7" style="text-align:center; padding: 15px;">
+              No registrations found for the selected range.
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+
+</body>
+</html>
