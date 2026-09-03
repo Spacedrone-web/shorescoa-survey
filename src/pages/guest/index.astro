@@ -71,103 +71,157 @@ function toCSTDateTime(dateStr) {
   };
 }
 
-// Filtering logic (paid vs unpaid, default vs showAll)
-function shouldDisplay(row, showAllFlag) {
-  const unitRows = grouped.get(row.unit) || [];
+// ============================================================
+// FINAL FILTERING + SORTING LOGIC (matches your rules exactly)
+// ============================================================
 
-  const isRegFee = row.passInfo_name === "Registration Fee";
-  const isWristband = row.passInfo_name.toLowerCase().includes("wrist");
-  const rowRFID = row.externalCredentialNumber?.trim() || "";
+function classifyUnit(unitRows) {
+  const regPaid = unitRows.filter(r => r.passInfo_name === "Registration Fee" && (r.paid === "paid" || r.paid === "ach-pending"));
+  const regUnpaid = unitRows.filter(r => r.passInfo_name === "Registration Fee" && r.paid !== "paid" && r.paid !== "ach-pending");
+  const wristbands = unitRows.filter(r => r.passInfo_name.toLowerCase().includes("wrist"));
 
-  const regFees = unitRows.filter(r => r.passInfo_name === "Registration Fee");
-  const wristbands = unitRows.filter(r =>
-    r.passInfo_name.toLowerCase().includes("wrist")
-  );
+  const wristRFID = wristbands.filter(w => (w.externalCredentialNumber?.trim() || "") !== "");
+  const wristBlank = wristbands.filter(w => (w.externalCredentialNumber?.trim() || "") === "");
 
-  const hasPaidFee = regFees.some(f => f.paid === "paid");
-  const hasUnpaidFee = regFees.some(f => f.paid !== "paid");
-
-  const hasAnyRFIDWristband = wristbands.some(
-    w => (w.externalCredentialNumber?.trim() || "") !== ""
-  );
-  const hasAnyBlankWristband = wristbands.some(
-    w => (w.externalCredentialNumber?.trim() || "") === ""
-  );
-
-  // ---------------------------------------------------------
-  // SHOW ALL VIEW
-  // ---------------------------------------------------------
-  if (showAllFlag) {
-    // Unpaid: still respect RFID rule
-    if (isRegFee && row.paid !== "paid") {
-      return hasAnyRFIDWristband;
-    }
-    if (isWristband && row.paid !== "paid") {
-      if (!hasAnyRFIDWristband) return false;
-      return rowRFID !== "";
-    }
-
-    // Paid: show fee + all wristbands (even blank)
-    if (isRegFee && row.paid === "paid") return true;
-    if (isWristband && row.paid === "paid") return true;
-
-    return false;
-  }
-
-  // ---------------------------------------------------------
-  // DEFAULT VIEW (attention only)
-  // ---------------------------------------------------------
-
-  // UNPAID LOGIC
-  if (isRegFee && row.paid !== "paid") {
-    // Unpaid fee must have at least one RFID wristband
-    return hasAnyRFIDWristband;
-  }
-
-  if (isWristband && row.paid !== "paid") {
-    // Under unpaid: show only RFID wristbands, and only if there is at least one RFID in unit
-    if (!hasAnyRFIDWristband) return false;
-    return rowRFID !== "";
-  }
-
-  // PAID LOGIC
-  if (isRegFee && row.paid === "paid") {
-    // If paid and ALL wristbands have RFID → do NOT show (unit is clean)
-    if (hasPaidFee && !hasUnpaidFee && hasAnyRFIDWristband && !hasAnyBlankWristband) {
-      return false;
-    }
-
-    // If paid and at least one wristband is blank → show fee (needs attention)
-    if (hasAnyBlankWristband) return true;
-
-    // If mixed paid/unpaid, still show paid fee (unit needs attention anyway)
-    if (hasUnpaidFee) return true;
-
-    return false;
-  }
-
-  if (isWristband && row.paid === "paid") {
-    // Default view: if paid and at least one blank wristband exists → show ALL wristbands
-    if (hasAnyBlankWristband) return true;
-
-    // If unit is clean (all RFID, no unpaid), don't show wristbands
-    if (hasPaidFee && !hasUnpaidFee && hasAnyRFIDWristband && !hasAnyBlankWristband) {
-      return false;
-    }
-
-    // If mixed paid/unpaid, unit needs attention → show RFID wristbands at least
-    return rowRFID !== "";
-  }
-
-  return false;
+  return {
+    regPaid,
+    regUnpaid,
+    wristbands,
+    wristRFID,
+    wristBlank,
+    hasPaid: regPaid.length > 0,
+    hasUnpaid: regUnpaid.length > 0,
+    hasRFID: wristRFID.length > 0,
+    hasBlank: wristBlank.length > 0
+  };
 }
 
-const filteredRows = (rows?.results || []).filter((row) =>
-  shouldDisplay(row, showAll)
-);
+function buildDisplayRows(unitRows, showAllFlag) {
+  const u = classifyUnit(unitRows);
+  const out = [];
+
+  // ============================================================
+  // DEFAULT VIEW (attention only)
+  // ============================================================
+  if (!showAllFlag) {
+
+    // ------------------------------------------------------------
+    // RULE: Hide clean paid units (paid + all wristbands RFID)
+    // ------------------------------------------------------------
+    if (u.hasPaid && !u.hasUnpaid && u.hasRFID && !u.hasBlank) {
+      return []; // clean → hide
+    }
+
+    // ------------------------------------------------------------
+    // RULE: Unpaid with NO RFID wristbands → hide
+    // ------------------------------------------------------------
+    if (u.hasUnpaid && !u.hasRFID) {
+      return []; // invalid unpaid → hide
+    }
+
+    // ------------------------------------------------------------
+    // RULE: Split units (paid + unpaid + RFID under unpaid)
+    // ------------------------------------------------------------
+    if (u.hasPaid && u.hasUnpaid && u.hasRFID) {
+      // Unpaid fee
+      out.push(...u.regUnpaid);
+
+      // Unpaid wristbands (RFID only)
+      out.push(...u.wristRFID);
+
+      // Paid fee
+      out.push(...u.regPaid);
+
+      // Paid wristbands:
+      // Default view → show only RFID
+      out.push(...u.wristRFID);
+
+      return out;
+    }
+
+    // ------------------------------------------------------------
+    // RULE: Paid fee + blank wristbands → needs attention
+    // ------------------------------------------------------------
+    if (u.hasPaid && u.hasBlank) {
+      out.push(...u.regPaid);
+      out.push(...u.wristbands); // show all wristbands (blank + RFID)
+      return out;
+    }
+
+    // ------------------------------------------------------------
+    // RULE: Paid fee + NO wristbands → needs attention
+    // ------------------------------------------------------------
+    if (u.hasPaid && u.wristbands.length === 0) {
+      out.push(...u.regPaid);
+      return out;
+    }
+
+    // ------------------------------------------------------------
+    // RULE: Unpaid + RFID wristbands → show unpaid + RFID wristbands
+    // ------------------------------------------------------------
+    if (u.hasUnpaid && u.hasRFID) {
+      out.push(...u.regUnpaid);
+      out.push(...u.wristRFID);
+      return out;
+    }
+
+    return [];
+  }
+
+  // ============================================================
+  // SHOW ALL VIEW (everything)
+  // ============================================================
+
+  // Unpaid fee (only if RFID exists)
+  if (u.hasUnpaid && u.hasRFID) {
+    out.push(...u.regUnpaid);
+    out.push(...u.wristbands); // show all wristbands under unpaid
+  }
+
+  // Paid fee (always show)
+  if (u.hasPaid) {
+    out.push(...u.regPaid);
+    out.push(...u.wristbands); // show all wristbands under paid
+  }
+
+  return out;
+}
+
+// ============================================================
+// BUILD FINAL FILTERED + SORTED ROWS
+// ============================================================
+
+let filteredRows = [];
+
+for (const [unit, unitRows] of grouped.entries()) {
+  const displayRows = buildDisplayRows(unitRows, showAll);
+  filteredRows.push(...displayRows);
+}
+
+// Sort final output:
+// 1. Unit
+// 2. Registration Fee (unpaid)
+// 3. Wristbands under unpaid
+// 4. Registration Fee (paid)
+// 5. Wristbands under paid
+
+filteredRows.sort((a, b) => {
+  if (a.unit !== b.unit) return a.unit - b.unit;
+
+  const order = (row) => {
+    if (row.passInfo_name === "Registration Fee" && row.paid !== "paid" && row.paid !== "ach-pending") return 1;
+    if (row.passInfo_name.toLowerCase().includes("wrist") && (row.paid !== "paid" && row.paid !== "ach-pending")) return 2;
+    if (row.passInfo_name === "Registration Fee" && (row.paid === "paid" || row.paid === "ach-pending")) return 3;
+    if (row.passInfo_name.toLowerCase().includes("wrist") && (row.paid === "paid" || row.paid === "ach-pending")) return 4;
+    return 99;
+  };
+
+  return order(a) - order(b);
+});
 
 const totalCount = rows?.results?.length || 0;
 const visibleCount = filteredRows.length;
+
 
 
 
