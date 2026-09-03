@@ -71,7 +71,7 @@ function toCSTDateTime(dateStr) {
   };
 }
 
-// Filtering logic (unpaid vs paid, with correct wristband behavior)
+// Filtering logic (paid vs unpaid, default vs showAll)
 function shouldDisplay(row, showAllFlag) {
   const unitRows = grouped.get(row.unit) || [];
 
@@ -86,55 +86,79 @@ function shouldDisplay(row, showAllFlag) {
 
   const hasPaidFee = regFees.some(f => f.paid === "paid");
   const hasUnpaidFee = regFees.some(f => f.paid !== "paid");
+
   const hasAnyRFIDWristband = wristbands.some(
     w => (w.externalCredentialNumber?.trim() || "") !== ""
   );
+  const hasAnyBlankWristband = wristbands.some(
+    w => (w.externalCredentialNumber?.trim() || "") === ""
+  );
 
   // ---------------------------------------------------------
-  // REGISTRATION FEE ROWS
+  // SHOW ALL VIEW
   // ---------------------------------------------------------
-  if (isRegFee) {
-    // Paid fee: always show
-    if (row.paid === "paid") {
-      return true;
-    }
-
-    // Unpaid fee: show only if there is at least one RFID wristband in this unit
-    if (row.paid !== "paid") {
+  if (showAllFlag) {
+    // Unpaid: still respect RFID rule
+    if (isRegFee && row.paid !== "paid") {
       return hasAnyRFIDWristband;
     }
-
-    return false;
-  }
-
-  // ---------------------------------------------------------
-  // GUEST WRISTBAND ROWS
-  // ---------------------------------------------------------
-  if (isWristband) {
-    // If there is a paid fee in this unit → show ALL wristbands (even blank)
-    if (hasPaidFee) {
-      return true;
-    }
-
-    // If only unpaid fees exist:
-    // Show wristbands ONLY if there is at least one RFID wristband in the unit,
-    // and this specific wristband has RFID.
-    if (hasUnpaidFee) {
-      if (!hasAnyRFIDWristband) {
-        // Example: unit with unpaid fee but NO RFID wristbands → hide all
-        return false;
-      }
-
-      // Show only wristbands that have RFID
+    if (isWristband && row.paid !== "paid") {
+      if (!hasAnyRFIDWristband) return false;
       return rowRFID !== "";
     }
 
+    // Paid: show fee + all wristbands (even blank)
+    if (isRegFee && row.paid === "paid") return true;
+    if (isWristband && row.paid === "paid") return true;
+
     return false;
   }
 
   // ---------------------------------------------------------
-  // Any other row type (if it ever exists)
+  // DEFAULT VIEW (attention only)
   // ---------------------------------------------------------
+
+  // UNPAID LOGIC
+  if (isRegFee && row.paid !== "paid") {
+    // Unpaid fee must have at least one RFID wristband
+    return hasAnyRFIDWristband;
+  }
+
+  if (isWristband && row.paid !== "paid") {
+    // Under unpaid: show only RFID wristbands, and only if there is at least one RFID in unit
+    if (!hasAnyRFIDWristband) return false;
+    return rowRFID !== "";
+  }
+
+  // PAID LOGIC
+  if (isRegFee && row.paid === "paid") {
+    // If paid and ALL wristbands have RFID → do NOT show (unit is clean)
+    if (hasPaidFee && !hasUnpaidFee && hasAnyRFIDWristband && !hasAnyBlankWristband) {
+      return false;
+    }
+
+    // If paid and at least one wristband is blank → show fee (needs attention)
+    if (hasAnyBlankWristband) return true;
+
+    // If mixed paid/unpaid, still show paid fee (unit needs attention anyway)
+    if (hasUnpaidFee) return true;
+
+    return false;
+  }
+
+  if (isWristband && row.paid === "paid") {
+    // Default view: if paid and at least one blank wristband exists → show ALL wristbands
+    if (hasAnyBlankWristband) return true;
+
+    // If unit is clean (all RFID, no unpaid), don't show wristbands
+    if (hasPaidFee && !hasUnpaidFee && hasAnyRFIDWristband && !hasAnyBlankWristband) {
+      return false;
+    }
+
+    // If mixed paid/unpaid, unit needs attention → show RFID wristbands at least
+    return rowRFID !== "";
+  }
+
   return false;
 }
 
@@ -144,6 +168,7 @@ const filteredRows = (rows?.results || []).filter((row) =>
 
 const totalCount = rows?.results?.length || 0;
 const visibleCount = filteredRows.length;
+
 
 
 
