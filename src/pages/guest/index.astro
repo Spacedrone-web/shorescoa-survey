@@ -115,31 +115,46 @@ const visibleCount = filteredRows.length;
       background: #f5f5f5;
     }
 
-    /* HEADER */
-    .guest-banner {
-      width: 100%;
-      background: #1e73be;
-      color: white;
-      padding: 18px 25px;
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      align-items: center;
-      border-bottom: 4px solid #155a94;
-    }
+	/* HEADER */
+	.guest-banner {
+	  width: 100%;
+	  background: #1e73be;
+	  color: white;
+	  padding: 18px 25px;
+	  display: flex;                 /* ⬅ change from grid to flex */
+	  justify-content: space-between;
+	  align-items: center;
+	  border-bottom: 4px solid #155a94;
+	}
 
-    .banner-left { display: flex; align-items: center; }
-    .guest-banner-logo { height: 60px; }
+	.banner-left {
+	  display: flex;
+	  align-items: center;
+	}
 
-    .banner-center { display: flex; justify-content: center; }
-    .guest-banner-title { font-size: 34px; font-weight: bold; white-space: nowrap; }
+	.guest-banner-logo {
+	  height: 60px;
+	}
 
-    .banner-right {
-      display: flex;
-      flex-direction: column !important;
-	  justify-content: flex-start;
-      align-items: flex-end;
-      gap: 10px;
-    }
+	.banner-center {
+	  display: flex;
+	  justify-content: center;
+	  flex: 1;
+	}
+
+	.guest-banner-title {
+	  font-size: 34px;
+	  font-weight: bold;
+	  white-space: nowrap;
+	  text-align: center;
+	}
+
+	.banner-right {
+	  display: flex;
+	  flex-direction: column;        /* ⬅ stack vertically */
+	  align-items: flex-end;
+	  gap: 10px;
+	}
 
     .parking-banner {
       background: rgba(0,0,0,0.25);
