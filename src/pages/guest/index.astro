@@ -121,7 +121,7 @@ const visibleCount = filteredRows.length;
 	  background: #1e73be;
 	  color: white;
 	  padding: 18px 25px;
-	  display: flex;                 /* ⬅ change from grid to flex */
+	  display: flex;                 /* ← switch from grid to flex */
 	  justify-content: space-between;
 	  align-items: center;
 	  border-bottom: 4px solid #155a94;
@@ -151,9 +151,10 @@ const visibleCount = filteredRows.length;
 
 	.banner-right {
 	  display: flex;
-	  flex-direction: column;        /* ⬅ stack vertically */
+	  flex-direction: column;
 	  align-items: flex-end;
 	  gap: 10px;
+	  width: 180px;                 /* ← makes both buttons same width */
 	}
 
     .parking-banner {
@@ -165,16 +166,11 @@ const visibleCount = filteredRows.length;
       white-space: nowrap;
     }
 
-    .nav-btn {
-      padding: 8px 16px;
-      background: #0f766e;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-weight: bold;
-      cursor: pointer;
-      font-size: 14px;
-    }
+	.nav-btn,
+	.logout-btn {
+	  width: 100%;                  /* ← match parent width */
+	  text-align: center;
+	}
 
     .logout-btn {
       padding: 8px 16px;
