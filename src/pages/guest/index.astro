@@ -71,7 +71,7 @@ function toCSTDateTime(dateStr) {
   };
 }
 
-// Filtering logic (updated for new unpaid + RFID rules)
+// Filtering logic (updated: unpaid shows only RFID wristbands + fee)
 function shouldDisplay(row, showAllFlag) {
   const unitRows = grouped.get(row.unit) || [];
 
@@ -89,18 +89,31 @@ function shouldDisplay(row, showAllFlag) {
     r => r.externalCredentialNumber?.trim() || ""
   );
 
-  const wristWithRFID = wristRFIDs.filter(r => r !== "");
+  const wristWithRFID = wristbandRows.filter(
+    r => (r.externalCredentialNumber?.trim() || "") !== ""
+  );
   const wristAnyRFID = wristWithRFID.length > 0;
 
   // ---------------------------------------------------------
   // NEW RULE: Registration Fee (unpaid)
   // ---------------------------------------------------------
   if (paidStatus !== "paid") {
-    // Unpaid fee must have at least one wristband with RFID
+    // If no wristbands with RFID → hide everything for this unit
     if (!wristAnyRFID) return false;
 
-    // Unpaid + at least one RFID → show
-    return true;
+    // For this specific row:
+    const isRegFee = row.passInfo_name === "Registration Fee";
+    const isWristband = row.passInfo_name.toLowerCase().includes("wrist");
+    const rowRFID = row.externalCredentialNumber?.trim() || "";
+
+    // Show the unpaid Registration Fee row
+    if (isRegFee) return true;
+
+    // Show only wristbands that have RFID
+    if (isWristband && rowRFID !== "") return true;
+
+    // Hide wristbands with blank RFID and any other rows
+    return false;
   }
 
   // ---------------------------------------------------------
@@ -146,6 +159,7 @@ const filteredRows = (rows?.results || []).filter((row) =>
 
 const totalCount = rows?.results?.length || 0;
 const visibleCount = filteredRows.length;
+
 
 ---
 <html lang="en">
