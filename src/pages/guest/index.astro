@@ -87,35 +87,6 @@ function toCSTDateTime(dateStr) {
   };
 }
 
-// ============================================================
-// FINAL FILTERING + SORTING LOGIC (matches your rules exactly)
-// ============================================================
-
-function classifyUnit(unitRows) {
-  const regPaid = unitRows.filter(r => r.passInfo_name === "Registration Fee" && (r.paid === "paid" || r.paid === "ach-pending"));
-  const regUnpaid = unitRows.filter(r => r.passInfo_name === "Registration Fee" && r.paid !== "paid" && r.paid !== "ach-pending");
-  const wristbands = unitRows.filter(r => r.passInfo_name.toLowerCase().includes("wrist"));
-
-  const wristRFID = wristbands.filter(w => (w.externalCredentialNumber?.trim() || "") !== "");
-  const wristBlank = wristbands.filter(w => (w.externalCredentialNumber?.trim() || "") === "");
-
-  return {
-    regPaid,
-    regUnpaid,
-    wristbands,
-    wristRFID,
-    wristBlank,
-    hasPaid: regPaid.length > 0,
-    hasUnpaid: regUnpaid.length > 0,
-    hasRFID: wristRFID.length > 0,
-    hasBlank: wristBlank.length > 0
-  };
-}
-
-function buildDisplayRows(unitRows, showAllFlag) {
-  const u = classifyUnit(unitRows);
-  const out = [];
-
   // ============================================================
   // DEFAULT VIEW (attention only)
   // ============================================================
