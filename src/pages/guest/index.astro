@@ -188,31 +188,96 @@ function buildDisplayRows(unitRows, showAllFlag) {
 }
 
 // ============================================================
-// BUILD FINAL FILTERED + SORTED ROWS
+// BUILD FINAL FILTERED + SORTED ROWS (correct hierarchical logic)
 // ============================================================
 
 let filteredRows = [];
 
 for (const [unit, unitRows] of grouped.entries()) {
-  const displayRows = buildDisplayRows(unitRows, showAll);
-  filteredRows.push(...displayRows);
+
+  // Group by registrationId
+  const registrations = new Map();
+
+  for (const r of unitRows) {
+    const regId = r.registrationId;
+
+    if (!registrations.has(regId)) {
+      registrations.set(regId, { fee: null, wristbands: [] });
+    }
+
+    if (r.passInfo_name === "Registration Fee") {
+      registrations.get(regId).fee = r;
+    } else {
+      registrations.get(regId).wristbands.push(r);
+    }
+  }
+
+  // Apply visibility rules
+  for (const [regId, group] of registrations.entries()) {
+    const fee = group.fee;
+    const wb = group.wristbands;
+
+    if (!fee) continue;
+
+    const paid = fee.paid;
+    const arrival = fee.arrivalDate?.split("T")[0];
+
+    const validFee = (paid === "paid" || paid === "ach-pending");
+    const unpaidFee = (paid === "unpaid");
+
+    let include = false;
+
+    if (!showAll) {
+      // DEFAULT VIEW
+      include = validFee && wb.length > 0;
+    } else {
+      // SHOW ALL VIEW
+      include =
+        validFee ||
+        (unpaidFee && wb.length > 0);
+    }
+
+    if (!include) continue;
+
+    // Registration Fee row (guest name shown)
+    filteredRows.push({
+      ...fee,
+      registrationId: regId,
+      passInfo_name: "Registration Fee",
+      guest_firstName: fee.guest_firstName,
+      guest_lastName: fee.guest_lastName
+    });
+
+    // Wristband rows (guest name hidden)
+    for (const w of wb) {
+      filteredRows.push({
+        ...w,
+        registrationId: regId,
+        guest_firstName: "",
+        guest_lastName: ""
+      });
+    }
+  }
 }
 
-// Sort final output:
-// 1. Unit
-// 2. Registration Fee (unpaid)
-// 3. Wristbands under unpaid
-// 4. Registration Fee (paid)
-// 5. Wristbands under paid
+// ============================================================
+// SORT FINAL OUTPUT
+// ============================================================
 
 filteredRows.sort((a, b) => {
   if (a.unit !== b.unit) return a.unit - b.unit;
 
   const order = (row) => {
-    if (row.passInfo_name === "Registration Fee" && row.paid !== "paid" && row.paid !== "ach-pending") return 1;
-    if (row.passInfo_name.toLowerCase().includes("wrist") && (row.paid !== "paid" && row.paid !== "ach-pending")) return 2;
-    if (row.passInfo_name === "Registration Fee" && (row.paid === "paid" || row.paid === "ach-pending")) return 3;
-    if (row.passInfo_name.toLowerCase().includes("wrist") && (row.paid === "paid" || row.paid === "ach-pending")) return 4;
+    const isFee = row.passInfo_name === "Registration Fee";
+    const isWB = row.passInfo_name.toLowerCase().includes("wrist");
+    const isPaid = (row.paid === "paid" || row.paid === "ach-pending");
+    const isUnpaid = (row.paid === "unpaid");
+
+    if (isFee && isUnpaid) return 1;
+    if (isWB && isUnpaid) return 2;
+    if (isFee && isPaid) return 3;
+    if (isWB && isPaid) return 4;
+
     return 99;
   };
 
@@ -221,6 +286,7 @@ filteredRows.sort((a, b) => {
 
 const totalCount = rows?.results?.length || 0;
 const visibleCount = filteredRows.length;
+
 
 
 
