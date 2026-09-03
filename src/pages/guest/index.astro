@@ -32,7 +32,8 @@ const rows = await DB.prepare(`
     guest_lastName,
     passType,
     passInfo_name,
-    externalCredentialNumber
+    externalCredentialNumber,
+	paid
   FROM guest_reg
   WHERE substr(arrivalDate, 1, 10) >= ?
     AND substr(arrivalDate, 1, 10) <= ?
@@ -356,19 +357,26 @@ const visibleCount = filteredRows.length;
         {filteredRows.map((row) => {
           const created = toCSTDateTime(row.createdAt);
           return (
-            <tr>
-              <td>{row.unit}</td>
-              <td>{toCSTDate(row.arrivalDate)}</td>
-              <td>{toCSTDate(row.departureDate)}</td>
-              <td>{created.date} {created.time}</td>
-              <td>
-                {row.passInfo_name === "Registration Fee"
-                  ? `${row.guest_firstName} ${row.guest_lastName}`
-                  : ""}
-              </td>
-              <td>{row.passInfo_name}</td>
-              <td>{row.externalCredentialNumber}</td>
-            </tr>
+			<tr>
+			  <td>{row.unit}</td>
+			  <td>{toCSTDate(row.arrivalDate)}</td>
+			  <td>{toCSTDate(row.departureDate)}</td>
+			  <td>{created.date} {created.time}</td>
+
+			  <td>
+				{row.passInfo_name === "Registration Fee"
+				  ? `${row.guest_firstName} ${row.guest_lastName}`
+				  : ""}
+			  </td>
+
+			  <td>
+				{row.passInfo_name === "Registration Fee"
+				  ? `Registration Fee (${row.paid || "unknown"})`
+				  : row.passInfo_name}
+			  </td>
+
+			  <td>{row.externalCredentialNumber}</td>
+			</tr>
           );
         })}
 
