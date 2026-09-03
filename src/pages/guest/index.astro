@@ -70,23 +70,50 @@ function toCSTDateTime(dateStr) {
   };
 }
 
-// Filtering logic
+// Filtering logic (matches James' rules exactly)
 function shouldDisplay(row, showAllFlag) {
-  if (showAllFlag) return true;
-
   const unitRows = grouped.get(row.unit) || [];
 
-  const hasRegistrationFee = unitRows.some(
+  const registrationFeeRow = unitRows.find(
     r => r.passInfo_name === "Registration Fee"
   );
 
-  const hasWristband = unitRows.some(
+  const wristbandRows = unitRows.filter(
     r => r.passInfo_name.toLowerCase().includes("wrist")
   );
 
-  // Default rules:
-  // Show units with Registration Fee AND no wristbands
-  if (hasRegistrationFee && !hasWristband) return true;
+  const regRFID = registrationFeeRow?.externalCredentialNumber?.trim() || "";
+  const wristRFIDs = wristbandRows.map(
+    r => r.externalCredentialNumber?.trim() || ""
+  );
+
+  const wristAnyOccupied = wristRFIDs.some(r => r !== "");
+  const wristAnyBlank = wristRFIDs.some(r => r === "");
+
+  // -----------------------------
+  // DEFAULT VIEW (Show All OFF)
+  // -----------------------------
+  if (!showAllFlag) {
+    // Rule 1: Reg occupied + Wrist blank
+    if (regRFID !== "" && wristAnyBlank) return true;
+
+    // Rule 2: Reg blank + Wrist blank
+    if (regRFID === "" && wristAnyBlank) return true;
+
+    return false;
+  }
+
+  // -----------------------------
+  // SHOW ALL VIEW (Show All ON)
+  // -----------------------------
+  // Rule 1: Reg occupied + Wrist blank
+  if (regRFID !== "" && wristAnyBlank) return true;
+
+  // Rule 2: Reg blank + Wrist blank
+  if (regRFID === "" && wristAnyBlank) return true;
+
+  // Rule 3: Reg occupied + Wrist occupied
+  if (regRFID !== "" && wristAnyOccupied) return true;
 
   return false;
 }
@@ -97,7 +124,6 @@ const filteredRows = (rows?.results || []).filter((row) =>
 
 const totalCount = rows?.results?.length || 0;
 const visibleCount = filteredRows.length;
----
 
 <html lang="en">
 <head>
