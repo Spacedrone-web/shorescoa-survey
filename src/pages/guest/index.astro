@@ -40,16 +40,32 @@ const rows = await DB.prepare(`
   ORDER BY arrivalDate, unit, createdAt
 `).bind(fromDate, toDate).all();
 
-function groupByUnit(rows) {
-  const map = new Map();
-  for (const r of rows) {
-    if (!map.has(r.unit)) map.set(r.unit, []);
-    map.get(r.unit).push(r);
+// ============================================================
+// CORRECT GROUPING: unit → registrationId
+// ============================================================
+
+const grouped = new Map();
+
+for (const row of rows.results || []) {
+  const unit = row.unit;
+  const regId = row.registrationId;
+
+  if (!grouped.has(unit)) grouped.set(unit, new Map());
+  const regMap = grouped.get(unit);
+
+  if (!regMap.has(regId)) {
+    regMap.set(regId, { fee: null, wristbands: [] });
   }
-  return map;
+
+  const group = regMap.get(regId);
+
+  if (row.passInfo_name === "Registration Fee") {
+    group.fee = row;
+  } else {
+    group.wristbands.push(row);
+  }
 }
 
-const grouped = groupByUnit(rows.results || []);
 
 // Format helpers (CST)
 function toCSTDate(dateStr) {
@@ -286,11 +302,6 @@ filteredRows.sort((a, b) => {
 
 const totalCount = rows?.results?.length || 0;
 const visibleCount = filteredRows.length;
-
-
-
-
-
 
 ---
 <html lang="en">
