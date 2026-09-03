@@ -2,11 +2,27 @@
 import StatusDashboard from "../components/StatusDashboard.astro";
 
 const PASSWORD = "Shores9900!";
-let ok = false;
 
-if (Astro.request.method === "POST") {
+// ⭐ Check cookie first
+const authCookie = Astro.cookies.get("sop_auth");
+let ok = authCookie?.value === "ok";
+
+// ⭐ If cookie not set, check POST password
+if (!ok && Astro.request.method === "POST") {
   const form = await Astro.request.formData();
-  ok = form.get("pw") === PASSWORD;
+  const pw = form.get("pw");
+
+  if (pw === PASSWORD) {
+    ok = true;
+
+    // ⭐ Set cookie so future visits skip password
+    Astro.cookies.set("sop_auth", "ok", {
+      path: "/",
+      httpOnly: true,
+      sameSite: "strict",
+      maxAge: 60 * 60 * 12 // 12 hours
+    });
+  }
 }
 ---
 
@@ -101,7 +117,7 @@ if (Astro.request.method === "POST") {
   <body>
     <div class="card">
 
-      <!-- ⭐ NEW TOP BAR WITH BUTTON -->
+      <!-- ⭐ TOP BAR -->
       <div class="top-bar">
         <h1>ShoresCOA Status</h1>
 
@@ -112,6 +128,7 @@ if (Astro.request.method === "POST") {
         )}
       </div>
 
+      <!-- ⭐ PASSWORD SCREEN -->
       { !ok && (
         <>
           <p>Enter status password to view gauges.</p>
@@ -122,6 +139,7 @@ if (Astro.request.method === "POST") {
         </>
       )}
 
+      <!-- ⭐ DASHBOARD -->
       { ok && <StatusDashboard /> }
     </div>
   </body>

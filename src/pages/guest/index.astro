@@ -135,7 +135,8 @@ const visibleCount = filteredRows.length;
 
     .banner-right {
       display: flex;
-      flex-direction: column;
+      flex-direction: column !important;
+	  justify-content: flex-start;
       align-items: flex-end;
       gap: 10px;
     }
@@ -246,9 +247,13 @@ const visibleCount = filteredRows.length;
         Return to Status
       </button>
 
-      <button class="logout-btn" onclick="window.location.href='http://owners.shorescoa.com:4443/index.html'">
-        Logout
-      </button>
+	  <button class="logout-btn" onclick="
+	    document.cookie = 'sop_auth=; Max-Age=0; path=/';
+	    window.location.href='https://www.google.com/';
+	  ">
+	  Logout
+	  </button>
+
     </div>
   </div>
 
