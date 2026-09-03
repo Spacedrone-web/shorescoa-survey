@@ -71,85 +71,70 @@ function toCSTDateTime(dateStr) {
   };
 }
 
-// Filtering logic (updated: unpaid shows only RFID wristbands + fee)
+// Filtering logic (unpaid vs paid, with correct wristband behavior)
 function shouldDisplay(row, showAllFlag) {
   const unitRows = grouped.get(row.unit) || [];
 
-  const registrationFeeRow = unitRows.find(
-    r => r.passInfo_name === "Registration Fee"
+  const isRegFee = row.passInfo_name === "Registration Fee";
+  const isWristband = row.passInfo_name.toLowerCase().includes("wrist");
+  const rowRFID = row.externalCredentialNumber?.trim() || "";
+
+  const regFees = unitRows.filter(r => r.passInfo_name === "Registration Fee");
+  const wristbands = unitRows.filter(r =>
+    r.passInfo_name.toLowerCase().includes("wrist")
   );
 
-  const wristbandRows = unitRows.filter(
-    r => r.passInfo_name.toLowerCase().includes("wrist")
+  const hasPaidFee = regFees.some(f => f.paid === "paid");
+  const hasUnpaidFee = regFees.some(f => f.paid !== "paid");
+  const hasAnyRFIDWristband = wristbands.some(
+    w => (w.externalCredentialNumber?.trim() || "") !== ""
   );
-
-  const paidStatus = registrationFeeRow?.paid || ""; // "paid", "unpaid", etc.
-
-  const wristRFIDs = wristbandRows.map(
-    r => r.externalCredentialNumber?.trim() || ""
-  );
-
-  const wristWithRFID = wristbandRows.filter(
-    r => (r.externalCredentialNumber?.trim() || "") !== ""
-  );
-  const wristAnyRFID = wristWithRFID.length > 0;
 
   // ---------------------------------------------------------
-  // NEW RULE: Registration Fee (unpaid)
+  // REGISTRATION FEE ROWS
   // ---------------------------------------------------------
-  if (paidStatus !== "paid") {
-    // If no wristbands with RFID → hide everything for this unit
-    if (!wristAnyRFID) return false;
+  if (isRegFee) {
+    // Paid fee: always show
+    if (row.paid === "paid") {
+      return true;
+    }
 
-    // For this specific row:
-    const isRegFee = row.passInfo_name === "Registration Fee";
-    const isWristband = row.passInfo_name.toLowerCase().includes("wrist");
-    const rowRFID = row.externalCredentialNumber?.trim() || "";
+    // Unpaid fee: show only if there is at least one RFID wristband in this unit
+    if (row.paid !== "paid") {
+      return hasAnyRFIDWristband;
+    }
 
-    // Show the unpaid Registration Fee row
-    if (isRegFee) return true;
-
-    // Show only wristbands that have RFID
-    if (isWristband && rowRFID !== "") return true;
-
-    // Hide wristbands with blank RFID and any other rows
     return false;
   }
 
   // ---------------------------------------------------------
-  // Registration Fee (paid)
-  // Existing logic applies
+  // GUEST WRISTBAND ROWS
   // ---------------------------------------------------------
+  if (isWristband) {
+    // If there is a paid fee in this unit → show ALL wristbands (even blank)
+    if (hasPaidFee) {
+      return true;
+    }
 
-  const regRFID = registrationFeeRow?.externalCredentialNumber?.trim() || "";
-  const wristAnyBlank = wristRFIDs.some(r => r === "");
-  const wristAnyOccupied = wristRFIDs.some(r => r !== "");
+    // If only unpaid fees exist:
+    // Show wristbands ONLY if there is at least one RFID wristband in the unit,
+    // and this specific wristband has RFID.
+    if (hasUnpaidFee) {
+      if (!hasAnyRFIDWristband) {
+        // Example: unit with unpaid fee but NO RFID wristbands → hide all
+        return false;
+      }
 
-  // -----------------------------
-  // DEFAULT VIEW (Show All OFF)
-  // -----------------------------
-  if (!showAllFlag) {
-    // Rule 1: Reg occupied + Wrist blank
-    if (regRFID !== "" && wristAnyBlank) return true;
-
-    // Rule 2: Reg blank + Wrist blank
-    if (regRFID === "" && wristAnyBlank) return true;
+      // Show only wristbands that have RFID
+      return rowRFID !== "";
+    }
 
     return false;
   }
 
-  // -----------------------------
-  // SHOW ALL VIEW (Show All ON)
-  // -----------------------------
-  // Rule 1: Reg occupied + Wrist blank
-  if (regRFID !== "" && wristAnyBlank) return true;
-
-  // Rule 2: Reg blank + Wrist blank
-  if (regRFID === "" && wristAnyBlank) return true;
-
-  // Rule 3: Reg occupied + Wrist occupied
-  if (regRFID !== "" && wristAnyOccupied) return true;
-
+  // ---------------------------------------------------------
+  // Any other row type (if it ever exists)
+  // ---------------------------------------------------------
   return false;
 }
 
@@ -159,6 +144,7 @@ const filteredRows = (rows?.results || []).filter((row) =>
 
 const totalCount = rows?.results?.length || 0;
 const visibleCount = filteredRows.length;
+
 
 
 ---
