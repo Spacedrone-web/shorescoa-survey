@@ -103,6 +103,9 @@ for (const [unit, regMap] of grouped.entries()) {
 
     if (!fee) continue;
 
+    // ------------------------------------------------------------
+    // MUST BE DEFINED HERE (ABOVE filtering + wristband loop)
+    // ------------------------------------------------------------
     const paid = fee.paid;
     const validFee = (paid === "paid" || paid === "ach-pending");
     const unpaidFee = (paid === "unpaid");
@@ -152,25 +155,39 @@ for (const [unit, regMap] of grouped.entries()) {
 
     if (!include) continue;
 
-	// Wristband rows (guest name hidden)
-	for (const w of wb) {
+    // ------------------------------------------------------------
+    // Registration Fee row (guest name shown)
+    // ------------------------------------------------------------
+    filteredRows.push({
+      ...fee,
+      registrationId: regId,
+      passInfo_name: "Registration Fee",
+      guest_firstName: fee.guest_firstName,
+      guest_lastName: fee.guest_lastName
+    });
 
-	  const wRFID = (w.externalCredentialNumber || "").trim() !== "";
+    // ------------------------------------------------------------
+    // Wristband rows (guest name hidden)
+    // ------------------------------------------------------------
+    for (const w of wb) {
 
-	  // SHOW ALL: unpaid should only show RFID wristbands
-	  if (showAll && unpaidFee && !wRFID) {
-		continue; // skip blank wristbands under unpaid
-	  }
+      const wRFID = (w.externalCredentialNumber || "").trim() !== "";
 
-	  filteredRows.push({
-		...w,
-		registrationId: regId,
-		guest_firstName: "",
-		guest_lastName: ""
-	  });
-	}
+      // SHOW ALL: unpaid should only show RFID wristbands
+      if (showAll && unpaidFee && !wRFID) {
+        continue; // skip blank wristbands under unpaid
+      }
+
+      filteredRows.push({
+        ...w,
+        registrationId: regId,
+        guest_firstName: "",
+        guest_lastName: ""
+      });
+    }
   }
 }
+
 
 // ============================================================
 // SORT FINAL OUTPUT — GROUP BY registrationId CORRECTLY
