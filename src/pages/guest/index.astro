@@ -115,38 +115,32 @@ for (const [unit, regMap] of grouped.entries()) {
 
     if (!showAll) {
       // ============================================================
-      // DEFAULT VIEW RULES
+      // DEFAULT VIEW — ONLY PAID/ACH-PENDING, NEVER UNPAID
       // ============================================================
 
-      // CASE A1: Paid/ach-pending + fee RFID + all wristbands empty
-      if (validFee && feeRFID && wristRFID.length === 0) {
-        include = true;
-      }
+      if (!validFee) {
+        include = false;   // hide all unpaid
+      } else {
+        // Paid/ach-pending attention conditions:
+        // Show only if NOT complete
+        const isComplete =
+          feeRFID &&
+          wristRFID.length === wb.length &&
+          wristBlank.length === 0;
 
-      // CASE A2: Paid/ach-pending + fee empty + all wristbands empty
-      if (validFee && !feeRFID && wristRFID.length === 0) {
-        include = true;
-      }
-
-      // CASE B: Unpaid + at least one RFID wristband
-      if (unpaidFee && wristRFID.length > 0) {
-        include = true;
+        include = !isComplete;
       }
 
     } else {
       // ============================================================
-      // SHOW ALL RULES
+      // SHOW ALL VIEW
       // ============================================================
 
       // Show all paid/ach-pending
-      if (validFee) {
-        include = true;
-      }
+      if (validFee) include = true;
 
       // Show unpaid only if at least one RFID wristband exists
-      if (unpaidFee && wristRFID.length > 0) {
-        include = true;
-      }
+      if (unpaidFee && wristRFID.length > 0) include = true;
     }
 
     if (!include) continue;
