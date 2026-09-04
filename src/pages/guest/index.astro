@@ -107,14 +107,30 @@ for (const [unit, regMap] of grouped.entries()) {
     const validFee = (paid === "paid" || paid === "ach-pending");
     const unpaidFee = (paid === "unpaid");
 
+    const wristRFID = wb.filter(w => (w.externalCredentialNumber || "").trim() !== "");
+    const wristBlank = wb.filter(w => (w.externalCredentialNumber || "").trim() === "");
+
+    const isComplete =
+      validFee &&
+      wristRFID.length === wb.length &&   // all wristbands have RFID
+      wristBlank.length === 0;            // no blanks
+
     let include = false;
 
     if (!showAll) {
       // DEFAULT VIEW
-      include = validFee && wb.length > 0;
+      // Show only registrations needing attention:
+      // - paid but incomplete
+      // - unpaid but has RFID wristbands
+      include =
+        (!isComplete && validFee) ||
+        (unpaidFee && wristRFID.length > 0);
     } else {
       // SHOW ALL VIEW
-      include = validFee || (unpaidFee && wb.length > 0);
+      // Show everything except unpaid with NO RFID
+      include =
+        validFee ||
+        (unpaidFee && wristRFID.length > 0);
     }
 
     if (!include) continue;
