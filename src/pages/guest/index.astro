@@ -97,11 +97,6 @@ let filteredRows = [];
 
 for (const [unit, regMap] of grouped.entries()) {
 
-  // Determine if this unit has ANY paid registration
-  const hasPaidRegistration = [...regMap.values()].some(g =>
-    g.fee && (g.fee.paid === "paid" || g.fee.paid === "ach-pending")
-  );
-
   for (const [regId, group] of regMap.entries()) {
     const fee = group.fee;
     const wb = group.wristbands;
@@ -125,7 +120,6 @@ for (const [unit, regMap] of grouped.entries()) {
       if (!validFee) {
         include = false; // hide all unpaid
       } else {
-        // Paid/ach-pending attention conditions:
         const isComplete =
           feeRFID &&
           wristRFID.length === wb.length &&
@@ -136,23 +130,23 @@ for (const [unit, regMap] of grouped.entries()) {
     }
 
     // ============================================================
-    // SHOW ALL VIEW — SPECIAL RULES
+    // SHOW ALL VIEW — FINAL RULES
     // ============================================================
     else {
 
-      // RULE 1: If paid exists for this unit → hide ALL unpaid
-      if (hasPaidRegistration && unpaidFee) {
+      // RULE 1: Always show paid/ach-pending
+      if (validFee) {
+        include = true;
+      }
+
+      // RULE 2: Show unpaid ONLY if unpaid has RFID wristbands
+      if (unpaidFee && wristRFID.length > 0) {
+        include = true;
+      }
+
+      // RULE 3: Hide unpaid with NO RFID
+      if (unpaidFee && wristRFID.length === 0) {
         include = false;
-      }
-
-      // RULE 2: Show all paid/ach-pending
-      else if (validFee) {
-        include = true;
-      }
-
-      // RULE 3: Show unpaid ONLY if unpaid has RFID AND no paid exists
-      else if (unpaidFee && wristRFID.length > 0 && !hasPaidRegistration) {
-        include = true;
       }
     }
 
