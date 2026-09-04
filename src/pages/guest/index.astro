@@ -219,7 +219,8 @@ filteredRows.sort((a, b) => {
   return 0;
 });
 
-const totalCount = rows?.results?.length || 0;
+const rawCount = rows?.results?.length || 0;
+const totalCount = filteredRows.length;
 const visibleCount = filteredRows.length;
 ---
 
