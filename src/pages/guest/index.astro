@@ -143,18 +143,6 @@ function toCSTDateTime(dateStr) {
       return out;
     }
 
-    // ------------------------------------------------------------
-    // RULE: Unpaid + RFID wristbands → show unpaid + RFID wristbands
-    // ------------------------------------------------------------
-    if (u.hasUnpaid && u.hasRFID) {
-      out.push(...u.regUnpaid);
-      out.push(...u.wristRFID);
-      return out;
-    }
-
-    return [];
-  }
-
   // ============================================================
   // SHOW ALL VIEW (everything)
   // ============================================================
