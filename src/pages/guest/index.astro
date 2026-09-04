@@ -174,27 +174,33 @@ for (const [unit, regMap] of grouped.entries()) {
 }
 
 // ============================================================
-// SORT FINAL OUTPUT
+// SORT FINAL OUTPUT — GROUP BY registrationId CORRECTLY
 // ============================================================
 
 filteredRows.sort((a, b) => {
+  // 1. Sort by unit
   if (a.unit !== b.unit) return a.unit - b.unit;
 
-  const order = (row) => {
-    const isFee = row.passInfo_name === "Registration Fee";
-    const isWB = row.passInfo_name.toLowerCase().includes("wrist");
-    const isPaid = (row.paid === "paid" || row.paid === "ach-pending");
-    const isUnpaid = (row.paid === "unpaid");
+  // 2. Sort by registrationId (keeps unpaid + paid separate)
+  if (a.registrationId !== b.registrationId) {
+    return a.registrationId.localeCompare(b.registrationId);
+  }
 
-    if (isFee && isUnpaid) return 1;
-    if (isWB && isUnpaid) return 2;
-    if (isFee && isPaid) return 3;
-    if (isWB && isPaid) return 4;
+  // 3. Fee before wristbands
+  const aIsFee = a.passInfo_name === "Registration Fee";
+  const bIsFee = b.passInfo_name === "Registration Fee";
 
-    return 99;
-  };
+  if (aIsFee && !bIsFee) return -1;
+  if (!aIsFee && bIsFee) return 1;
 
-  return order(a) - order(b);
+  // 4. Paid before unpaid (inside each registrationId)
+  const aPaid = (a.paid === "paid" || a.paid === "ach-pending");
+  const bPaid = (b.paid === "paid" || b.paid === "ach-pending");
+
+  if (aPaid && !bPaid) return -1;
+  if (!aPaid && bPaid) return 1;
+
+  return 0;
 });
 
 const totalCount = rows?.results?.length || 0;
