@@ -152,24 +152,23 @@ for (const [unit, regMap] of grouped.entries()) {
 
     if (!include) continue;
 
-    // Registration Fee row (guest name shown)
-    filteredRows.push({
-      ...fee,
-      registrationId: regId,
-      passInfo_name: "Registration Fee",
-      guest_firstName: fee.guest_firstName,
-      guest_lastName: fee.guest_lastName
-    });
+	// Wristband rows (guest name hidden)
+	for (const w of wb) {
 
-    // Wristband rows (guest name hidden)
-    for (const w of wb) {
-      filteredRows.push({
-        ...w,
-        registrationId: regId,
-        guest_firstName: "",
-        guest_lastName: ""
-      });
-    }
+	  const wRFID = (w.externalCredentialNumber || "").trim() !== "";
+
+	  // SHOW ALL: unpaid should only show RFID wristbands
+	  if (showAll && unpaidFee && !wRFID) {
+		continue; // skip blank wristbands under unpaid
+	  }
+
+	  filteredRows.push({
+		...w,
+		registrationId: regId,
+		guest_firstName: "",
+		guest_lastName: ""
+	  });
+	}
   }
 }
 
