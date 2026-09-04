@@ -107,30 +107,46 @@ for (const [unit, regMap] of grouped.entries()) {
     const validFee = (paid === "paid" || paid === "ach-pending");
     const unpaidFee = (paid === "unpaid");
 
+    const feeRFID = (fee.externalCredentialNumber || "").trim() !== "";
     const wristRFID = wb.filter(w => (w.externalCredentialNumber || "").trim() !== "");
     const wristBlank = wb.filter(w => (w.externalCredentialNumber || "").trim() === "");
-
-    const isComplete =
-      validFee &&
-      wristRFID.length === wb.length &&   // all wristbands have RFID
-      wristBlank.length === 0;            // no blanks
 
     let include = false;
 
     if (!showAll) {
-      // DEFAULT VIEW
-      // Show only registrations needing attention:
-      // - paid but incomplete
-      // - unpaid but has RFID wristbands
-      include =
-        (!isComplete && validFee) ||
-        (unpaidFee && wristRFID.length > 0);
+      // ============================================================
+      // DEFAULT VIEW RULES
+      // ============================================================
+
+      // CASE A1: Paid/ach-pending + fee RFID + all wristbands empty
+      if (validFee && feeRFID && wristRFID.length === 0) {
+        include = true;
+      }
+
+      // CASE A2: Paid/ach-pending + fee empty + all wristbands empty
+      if (validFee && !feeRFID && wristRFID.length === 0) {
+        include = true;
+      }
+
+      // CASE B: Unpaid + at least one RFID wristband
+      if (unpaidFee && wristRFID.length > 0) {
+        include = true;
+      }
+
     } else {
-      // SHOW ALL VIEW
-      // Show everything except unpaid with NO RFID
-      include =
-        validFee ||
-        (unpaidFee && wristRFID.length > 0);
+      // ============================================================
+      // SHOW ALL RULES
+      // ============================================================
+
+      // Show all paid/ach-pending
+      if (validFee) {
+        include = true;
+      }
+
+      // Show unpaid only if at least one RFID wristband exists
+      if (unpaidFee && wristRFID.length > 0) {
+        include = true;
+      }
     }
 
     if (!include) continue;
