@@ -33,7 +33,7 @@ const rows = await DB.prepare(`
     passType,
     passInfo_name,
     externalCredentialNumber,
-	paid
+    paid
   FROM guest_reg
   WHERE substr(arrivalDate, 1, 10) >= ?
     AND substr(arrivalDate, 1, 10) <= ?
@@ -66,8 +66,10 @@ for (const row of rows.results || []) {
   }
 }
 
-
+// ============================================================
 // Format helpers (CST)
+// ============================================================
+
 function toCSTDate(dateStr) {
   if (!dateStr) return "";
   const d = new Date(dateStr);
@@ -87,116 +89,21 @@ function toCSTDateTime(dateStr) {
   };
 }
 
-  // ============================================================
-  // DEFAULT VIEW (attention only)
-  // ============================================================
-  if (!showAllFlag) {
-
-    // ------------------------------------------------------------
-    // RULE: Hide clean paid units (paid + all wristbands RFID)
-    // ------------------------------------------------------------
-    if (u.hasPaid && !u.hasUnpaid && u.hasRFID && !u.hasBlank) {
-      return []; // clean → hide
-    }
-
-    // ------------------------------------------------------------
-    // RULE: Unpaid with NO RFID wristbands → hide
-    // ------------------------------------------------------------
-    if (u.hasUnpaid && !u.hasRFID) {
-      return []; // invalid unpaid → hide
-    }
-
-    // ------------------------------------------------------------
-    // RULE: Split units (paid + unpaid + RFID under unpaid)
-    // ------------------------------------------------------------
-    if (u.hasPaid && u.hasUnpaid && u.hasRFID) {
-      // Unpaid fee
-      out.push(...u.regUnpaid);
-
-      // Unpaid wristbands (RFID only)
-      out.push(...u.wristRFID);
-
-      // Paid fee
-      out.push(...u.regPaid);
-
-      // Paid wristbands:
-      // Default view → show only RFID
-      out.push(...u.wristRFID);
-
-      return out;
-    }
-
-    // ------------------------------------------------------------
-    // RULE: Paid fee + blank wristbands → needs attention
-    // ------------------------------------------------------------
-    if (u.hasPaid && u.hasBlank) {
-      out.push(...u.regPaid);
-      out.push(...u.wristbands); // show all wristbands (blank + RFID)
-      return out;
-    }
-
-    // ------------------------------------------------------------
-    // RULE: Paid fee + NO wristbands → needs attention
-    // ------------------------------------------------------------
-    if (u.hasPaid && u.wristbands.length === 0) {
-      out.push(...u.regPaid);
-      return out;
-    }
-
-  // ============================================================
-  // SHOW ALL VIEW (everything)
-  // ============================================================
-
-  // Unpaid fee (only if RFID exists)
-  if (u.hasUnpaid && u.hasRFID) {
-    out.push(...u.regUnpaid);
-    out.push(...u.wristbands); // show all wristbands under unpaid
-  }
-
-  // Paid fee (always show)
-  if (u.hasPaid) {
-    out.push(...u.regPaid);
-    out.push(...u.wristbands); // show all wristbands under paid
-  }
-
-  return out;
-}
-
 // ============================================================
 // BUILD FINAL FILTERED + SORTED ROWS (correct hierarchical logic)
 // ============================================================
 
 let filteredRows = [];
 
-for (const [unit, unitRows] of grouped.entries()) {
+for (const [unit, regMap] of grouped.entries()) {
 
-  // Group by registrationId
-  const registrations = new Map();
-
-  for (const r of unitRows) {
-    const regId = r.registrationId;
-
-    if (!registrations.has(regId)) {
-      registrations.set(regId, { fee: null, wristbands: [] });
-    }
-
-    if (r.passInfo_name === "Registration Fee") {
-      registrations.get(regId).fee = r;
-    } else {
-      registrations.get(regId).wristbands.push(r);
-    }
-  }
-
-  // Apply visibility rules
-  for (const [regId, group] of registrations.entries()) {
+  for (const [regId, group] of regMap.entries()) {
     const fee = group.fee;
     const wb = group.wristbands;
 
     if (!fee) continue;
 
     const paid = fee.paid;
-    const arrival = fee.arrivalDate?.split("T")[0];
-
     const validFee = (paid === "paid" || paid === "ach-pending");
     const unpaidFee = (paid === "unpaid");
 
@@ -207,9 +114,7 @@ for (const [unit, unitRows] of grouped.entries()) {
       include = validFee && wb.length > 0;
     } else {
       // SHOW ALL VIEW
-      include =
-        validFee ||
-        (unpaidFee && wb.length > 0);
+      include = validFee || (unpaidFee && wb.length > 0);
     }
 
     if (!include) continue;
@@ -261,8 +166,8 @@ filteredRows.sort((a, b) => {
 
 const totalCount = rows?.results?.length || 0;
 const visibleCount = filteredRows.length;
-
 ---
+
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -275,162 +180,162 @@ const visibleCount = filteredRows.length;
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
-	  font-family: Arial, sans-serif;
-	  background: #0d1b2a;        /* dark navy */
-	  color: #ffffff;             /* white text */
+      font-family: Arial, sans-serif;
+      background: #0d1b2a;
+      color: #ffffff;
     }
 
     /* HEADER */
     .guest-banner {
-	  width: 100%;
-	  background: #1b263b;        /* dark header */
-	  color: white;
-	  padding: 18px 25px;
-	  display: flex;
-	  justify-content: space-between;
-	  align-items: center;
-	  border-bottom: 4px solid #415a77; /* accent */
+      width: 100%;
+      background: #1b263b;
+      color: white;
+      padding: 18px 25px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 4px solid #415a77;
     }
 
     .banner-left {
-	  display: flex;
-	  align-items: center;
+      display: flex;
+      align-items: center;
     }
 
     .guest-banner-logo {
-	  height: 60px;
+      height: 60px;
     }
 
     .banner-center {
-  	  flex: 1;
-	  display: flex;
-	  justify-content: center;
+      flex: 1;
+      display: flex;
+      justify-content: center;
     }
 
     .guest-banner-title {
-	  font-size: 34px;
-	  font-weight: bold;
-	  white-space: nowrap;
-	  text-align: center;
+      font-size: 34px;
+      font-weight: bold;
+      white-space: nowrap;
+      text-align: center;
     }
 
     .banner-right {
-	  display: flex;
-	  flex-direction: column;
-	  align-items: flex-end;
-	  gap: 10px;
-	  width: 200px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+      width: 200px;
     }
 
-    /* BUTTONS — match Status page */
+    /* BUTTONS */
     .nav-btn,
     .logout-btn {
-	  width: 100%;
-	  text-align: center;
-	  padding: 10px 16px;
-	  border-radius: 6px;
-	  font-weight: bold;
-	  cursor: pointer;
-	  font-size: 14px;
-	  border: 2px solid #ffffff;   /* white border */
-	  background: transparent;     /* transparent button */
-	  color: #ffffff;              /* white text */
-	  transition: 0.2s;
+      width: 100%;
+      text-align: center;
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 14px;
+      border: 2px solid #ffffff;
+      background: transparent;
+      color: #ffffff;
+      transition: 0.2s;
     }
 
     .nav-btn:hover,
     .logout-btn:hover {
-	  background: #ffffff;
-	  color: #000000;
+      background: #ffffff;
+      color: #000000;
     }
 
     /* PAGE CONTENT */
     h2 {
-	  margin: 25px;
-	  font-size: 26px;
-	  color: #ffffff;
+      margin: 25px;
+      font-size: 26px;
+      color: #ffffff;
     }
 
     .top-bar {
-	  margin: 0 25px 20px 25px;
-	  background: #1b263b;
-	  padding: 15px;
-	  border-radius: 8px;
+      margin: 0 25px 20px 25px;
+      background: #1b263b;
+      padding: 15px;
+      border-radius: 8px;
     }
 
     .left-controls label {
-	  margin-right: 6px;
-	  font-weight: bold;
-	  color: #ffffff;
+      margin-right: 6px;
+      font-weight: bold;
+      color: #ffffff;
     }
 
     .left-controls input[type="date"] {
-	  margin-right: 12px;
-	  padding: 4px 6px;
-	  background: #415a77;
-	  color: #ffffff;
-	  border: 1px solid #778da9;
-	  border-radius: 4px;
+      margin-right: 12px;
+      padding: 4px 6px;
+      background: #415a77;
+      color: #ffffff;
+      border: 1px solid #778da9;
+      border-radius: 4px;
     }
 
     .btn-blue {
-	  background: #415a77;
-	  color: white;
-	  border: none;
-	  padding: 8px 14px;
-	  border-radius: 6px;
-	  cursor: pointer;
-	  margin-right: 8px;
-	  transition: 0.2s;
+      background: #415a77;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-right: 8px;
+      transition: 0.2s;
     }
 
     .btn-blue:hover {
-	  background: #778da9;
+      background: #778da9;
     }
 
     .counts {
-	  margin: 0 25px 10px 25px;
-	  font-size: 14px;
-	  color: #ffffff;
+      margin: 0 25px 10px 25px;
+      font-size: 14px;
+      color: #ffffff;
     }
 
     /* TABLE */
     .table-container {
-	  margin: 0 25px 40px 25px;
-	  background: #1b263b;
-	  border-radius: 8px;
-	  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-	  overflow: hidden;
+      margin: 0 25px 40px 25px;
+      background: #1b263b;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      overflow: hidden;
     }
 
     table {
-	  width: 100%;
-	  border-collapse: collapse;
-	  font-size: 15px;
-	  color: #ffffff;
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 15px;
+      color: #ffffff;
     }
 
     thead th {
-	  background: #415a77;
-	  color: white;
-	  padding: 12px 10px;
-	  border-right: 2px solid #778da9;
-	  font-weight: bold;
-	  text-align: left;
+      background: #415a77;
+      color: white;
+      padding: 12px 10px;
+      border-right: 2px solid #778da9;
+      font-weight: bold;
+      text-align: left;
     }
 
     tbody td {
-	  padding: 10px;
-	  border-right: 1px solid #778da9;
-	  border-bottom: 1px solid #415a77;
+      padding: 10px;
+      border-right: 1px solid #778da9;
+      border-bottom: 1px solid #415a77;
     }
 
     tbody tr:nth-child(even) {
-	  background: #0d1b2a;
+      background: #0d1b2a;
     }
 
     tbody tr:hover {
-	  background: #415a77;
+      background: #415a77;
     }
   </style>
 
@@ -519,26 +424,26 @@ const visibleCount = filteredRows.length;
         {filteredRows.map((row) => {
           const created = toCSTDateTime(row.createdAt);
           return (
-			<tr>
-			  <td>{row.unit}</td>
-			  <td>{toCSTDate(row.arrivalDate)}</td>
-			  <td>{toCSTDate(row.departureDate)}</td>
-			  <td>{created.date} {created.time}</td>
+            <tr>
+              <td>{row.unit}</td>
+              <td>{toCSTDate(row.arrivalDate)}</td>
+              <td>{toCSTDate(row.departureDate)}</td>
+              <td>{created.date} {created.time}</td>
 
-			  <td>
-				{row.passInfo_name === "Registration Fee"
-				  ? `${row.guest_firstName} ${row.guest_lastName}`
-				  : ""}
-			  </td>
+              <td>
+                {row.passInfo_name === "Registration Fee"
+                  ? `${row.guest_firstName} ${row.guest_lastName}`
+                  : ""}
+              </td>
 
-			  <td>
-				{row.passInfo_name === "Registration Fee"
-				  ? `Registration Fee (${row.paid || "unknown"})`
-				  : row.passInfo_name}
-			  </td>
+              <td>
+                {row.passInfo_name === "Registration Fee"
+                  ? `Registration Fee (${row.paid || "unknown"})`
+                  : row.passInfo_name}
+              </td>
 
-			  <td>{row.externalCredentialNumber}</td>
-			</tr>
+              <td>{row.externalCredentialNumber}</td>
+            </tr>
           );
         })}
 
