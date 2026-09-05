@@ -70,17 +70,28 @@ for (const row of rows.results || []) {
 // Format helpers (CST)
 // ============================================================
 
+function getCSTDate() {
+  return new Date().toLocaleDateString("en-CA", {
+    timeZone: "America/Chicago"
+  });
+}
+
+const CST_TODAY = getCSTDate();
+
 function toCSTDate(dateStr) {
   if (!dateStr) return "";
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("en-US", { timeZone: "America/Chicago" });
+  return new Date(dateStr).toLocaleDateString("en-CA", {
+    timeZone: "America/Chicago"
+  });
 }
 
 function toCSTDateTime(dateStr) {
   if (!dateStr) return { date: "", time: "" };
+
   const d = new Date(dateStr);
+
   return {
-    date: d.toLocaleDateString("en-US", { timeZone: "America/Chicago" }),
+    date: d.toLocaleDateString("en-CA", { timeZone: "America/Chicago" }),
     time: d.toLocaleTimeString("en-US", {
       timeZone: "America/Chicago",
       hour: "numeric",
