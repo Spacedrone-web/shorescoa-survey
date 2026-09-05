@@ -23,6 +23,10 @@ const CST_TODAY = getCSTDate();
 
 function toCSTDate(dateStr) {
   if (!dateStr) return "";
+  // If already YYYY-MM-DD, do NOT convert
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+
+  // Otherwise convert MM/DD/YYYY → YYYY-MM-DD
   return new Date(dateStr).toLocaleDateString("en-CA", {
     timeZone: "America/Chicago"
   });
