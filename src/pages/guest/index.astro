@@ -9,6 +9,40 @@ Astro.response.headers.set("Expires", "0");
 // D1 binding (Cloudflare Pages)
 const DB = (Astro.locals as any).runtime.env.DB;
 
+// ============================================================
+// Format helpers (CST)
+// ============================================================
+
+function getCSTDate() {
+  return new Date().toLocaleDateString("en-CA", {
+    timeZone: "America/Chicago"
+  });
+}
+
+const CST_TODAY = getCSTDate();
+
+function toCSTDate(dateStr) {
+  if (!dateStr) return "";
+  return new Date(dateStr).toLocaleDateString("en-CA", {
+    timeZone: "America/Chicago"
+  });
+}
+
+function toCSTDateTime(dateStr) {
+  if (!dateStr) return { date: "", time: "" };
+
+  const d = new Date(dateStr);
+
+  return {
+    date: d.toLocaleDateString("en-CA", { timeZone: "America/Chicago" }),
+    time: d.toLocaleTimeString("en-US", {
+      timeZone: "America/Chicago",
+      hour: "numeric",
+      minute: "2-digit"
+    })
+  };
+}
+
 // Read query params
 const url = new URL(Astro.request.url);
 const fromParam = url.searchParams.get("from");
@@ -91,40 +125,6 @@ for (const row of rows.results || []) {
   } else {
     group.wristbands.push(row);
   }
-}
-
-// ============================================================
-// Format helpers (CST)
-// ============================================================
-
-function getCSTDate() {
-  return new Date().toLocaleDateString("en-CA", {
-    timeZone: "America/Chicago"
-  });
-}
-
-const CST_TODAY = getCSTDate();
-
-function toCSTDate(dateStr) {
-  if (!dateStr) return "";
-  return new Date(dateStr).toLocaleDateString("en-CA", {
-    timeZone: "America/Chicago"
-  });
-}
-
-function toCSTDateTime(dateStr) {
-  if (!dateStr) return { date: "", time: "" };
-
-  const d = new Date(dateStr);
-
-  return {
-    date: d.toLocaleDateString("en-CA", { timeZone: "America/Chicago" }),
-    time: d.toLocaleTimeString("en-US", {
-      timeZone: "America/Chicago",
-      hour: "numeric",
-      minute: "2-digit"
-    })
-  };
 }
 
 // ============================================================
