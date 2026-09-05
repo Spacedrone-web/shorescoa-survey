@@ -4,7 +4,7 @@ Astro.response.headers.set("Pragma", "no-cache");
 Astro.response.headers.set("Expires", "0");
 
 // Force CST/CDT for date defaults
-const CST_TODAY = new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
+//const CST_TODAY = new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
 
 // D1 binding (Cloudflare Pages)
 const DB = (Astro.locals as any).runtime.env.DB;
