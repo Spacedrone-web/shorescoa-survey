@@ -15,30 +15,57 @@ const fromParam = url.searchParams.get("from");
 const toParam = url.searchParams.get("to");
 const showAllParam = url.searchParams.get("showAll");
 
-const fromDate = fromParam || CST_TODAY;
-const toDate = toParam || CST_TODAY;
-const showAll = showAllParam === "on" || showAllParam === "1";
+const fromDateRaw = fromParam || CST_TODAY;
+const toDateRaw   = toParam   || CST_TODAY;
+const showAll     = showAllParam === "on" || showAllParam === "1";
 
-// Query D1.guest_reg
-const rows = await DB.prepare(`
-  SELECT
-    passId,
-    registrationId,
-    unit,
-    substr(arrivalDate, 1, 10) AS arrivalDate,
-    substr(departureDate, 1, 10) AS departureDate,
-    createdAt,
-    guest_firstName,
-    guest_lastName,
-    passType,
-    passInfo_name,
-    externalCredentialNumber,
-    paid
-  FROM guest_reg
-  WHERE substr(arrivalDate, 1, 10) >= ?
-    AND substr(arrivalDate, 1, 10) <= ?
-  ORDER BY arrivalDate, unit, createdAt
-`).bind(fromDate, toDate).all();
+// Normalize to YYYY-MM-DD (CST)
+const fromDate = toCSTDate(fromDateRaw);
+const toDate   = toCSTDate(toDateRaw);
+
+let rows;
+
+if (showAll) {
+  // No date filter – show everything
+  rows = await DB.prepare(`
+    SELECT
+      passId,
+      registrationId,
+      unit,
+      substr(arrivalDate, 1, 10) AS arrivalDate,
+      substr(departureDate, 1, 10) AS departureDate,
+      createdAt,
+      guest_firstName,
+      guest_lastName,
+      passType,
+      passInfo_name,
+      externalCredentialNumber,
+      paid
+    FROM guest_reg
+    ORDER BY arrivalDate, unit, createdAt
+  `).all();
+} else {
+  // Filter by arrivalDate BETWEEN fromDate and toDate
+  rows = await DB.prepare(`
+    SELECT
+      passId,
+      registrationId,
+      unit,
+      substr(arrivalDate, 1, 10) AS arrivalDate,
+      substr(departureDate, 1, 10) AS departureDate,
+      createdAt,
+      guest_firstName,
+      guest_lastName,
+      passType,
+      passInfo_name,
+      externalCredentialNumber,
+      paid
+    FROM guest_reg
+    WHERE substr(arrivalDate, 1, 10) >= ?
+      AND substr(arrivalDate, 1, 10) <= ?
+    ORDER BY arrivalDate, unit, createdAt
+  `).bind(fromDate, toDate).all();
+}
 
 // ============================================================
 // CORRECT GROUPING: unit → registrationId
