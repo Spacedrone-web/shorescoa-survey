@@ -80,9 +80,14 @@ for (const fee of feeRows.results || []) {
   const isUnpaidWithRFID = (fee.paid === "unpaid" &&
     (fee.externalCredentialNumber || "").trim() !== "");
 
-  if (!isPaid && !isUnpaidWithRFID) {
-    continue; // unpaid with no RFID → ignore
-  }
+  // Show paid, ach-pending, and unpaid (even if missing RFID)
+  const includeFee =
+      fee.paid === "paid" ||
+      fee.paid === "ach-pending" ||
+      fee.paid === "unpaid";
+
+  if (!includeFee) continue;
+
 
   // Fetch wristbands
   const wbRows = await DB.prepare(`
