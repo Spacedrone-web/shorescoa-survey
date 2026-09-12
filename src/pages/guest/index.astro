@@ -60,8 +60,8 @@ const feeRows = await DB.prepare(`
     paid
   FROM guest_reg
   WHERE passInfo_name = 'Registration Fee'
-    AND substr(arrivalDate, 1, 10) >= ?
     AND substr(arrivalDate, 1, 10) <= ?
+    AND substr(departureDate, 1, 10) >= ?
 `).bind(TODAY, PLUS5).all();
 
 let worklist = [];
@@ -118,7 +118,7 @@ for (const fee of feeRows.results || []) {
         AND externalCredentialNumber != ''
         AND substr(arrivalDate, 1, 10) <= ?
         AND substr(departureDate, 1, 10) >= ?
-    `).bind(unit, TODAY, PLUS5).all();
+    `).bind(unit, YESTERDAY, PLUS5).all();
 
     misassigned = otherRows.results || [];
   }
@@ -225,70 +225,55 @@ const visibleCount = worklist.length;
 
 <body>
 
-  <!-- HEADER -->
   <div class="guest-banner">
-    <div class="banner-left">
-      <img src="/sop_logo.jpg" class="guest-banner-logo" />
-    </div>
-
-    <div class="banner-center">
-      <div class="guest-banner-title">RFID Worklist</div>
-    </div>
-
-    <div class="banner-right">
-      <button class="nav-btn" onclick="window.location.href='/status'">
-        Return to Status
-      </button>
-
-      <button class="logout-btn" onclick="
-        document.cookie = 'sop_auth=; Max-Age=0; path=/';
-        window.location.href='https://www.google.com/';
-      ">
-        Logout
-      </button>
-    </div>
+    <img src="/sop_logo.jpg" class="guest-banner-logo" />
+    <div class="guest-banner-title">RFID Worklist</div>
+    <button class="nav-btn" onclick="window.location.href='/status'">Return to Status</button>
   </div>
 
-  <!-- PAGE CONTENT -->
   <h2>RFID Assignment Worklist</h2>
 
-  <div class="counts">
+  <div style="margin: 0 25px 10px 25px;">
     Showing {visibleCount} registrations needing RFID work
   </div>
 
-  <div class="table-container">
-    <table>
-      <thead>
-        <tr>
-          <th>Unit</th>
-          <th>Guest</th>
-          <th>Type</th>
-          <th>Paid</th>
-          <th>RFID</th>
-          <th>Arrival</th>
-          <th>Departure</th>
-        </tr>
-      </thead>
+  <table>
+    <thead>
+      <tr>
+        <th>Unit</th>
+        <th>Guest</th>
+        <th>Type</th>
+        <th>Paid</th>
+        <th>RFID</th>
+        <th>Arrival</th>
+        <th>Departure</th>
+      </tr>
+    </thead>
 
-      <tbody>
-        {worklist.map((entry) => {
-          const fee = entry.fee;
+    <tbody>
+      {worklist.map((entry) => {
+        const fee = entry.fee;
+        const created = toCSTDateTime(fee.createdAt);
 
-          return (
-            <>
-              <!-- Registration Fee Row -->
-              <tr class="incomplete">
-                <td>{fee.unit}</td>
-                <td>{fee.guest_firstName} {fee.guest_lastName}</td>
-                <td>Registration Fee</td>
-                <td>{fee.paid}</td>
-                <td>{fee.externalCredentialNumber || "(missing)"}</td>
-                <td>{toCSTDate(fee.arrivalDate)}</td>
-                <td>{toCSTDate(fee.departureDate)}</td>
-              </tr>
+        return (
+          <>
+            <tr class="incomplete">
+              <td>{fee.unit}</td>
+              <td>{fee.guest_firstName} {fee.guest_lastName}</td>
+              <td>Registration Fee</td>
+              <td>{fee.paid}</td>
+              <td>{fee.externalCredentialNumber || "(missing)"}</td>
+              <td>{toCSTDate(fee.arrivalDate)}</td>
+              <td>{toCSTDate(fee.departureDate)}</td>
+            </tr>
 
-              <!-- Wristbands -->
-              {entry.wristbands.map((wb) => (
+            {entry.wristbands
+              .sort((a, b) => {
+                const aRFID = (a.externalCredentialNumber || "").trim() !== "";
+                const bRFID = (b.externalCredentialNumber || "").trim() !== "";
+                return aRFID === bRFID ? 0 : aRFID ? -1 : 1;
+              })
+              .map((wb) => (
                 <tr class={wb.externalCredentialNumber ? "" : "incomplete"}>
                   <td>{fee.unit}</td>
                   <td>{wb.guest_firstName} {wb.guest_lastName}</td>
@@ -300,33 +285,30 @@ const visibleCount = worklist.length;
                 </tr>
               ))}
 
-              <!-- Misassigned -->
-              {entry.misassigned.map((wb) => (
-                <tr class="misassigned">
-                  <td>{fee.unit}</td>
-                  <td>{wb.guest_firstName} {wb.guest_lastName}</td>
-                  <td>Possible Misassigned WB</td>
-                  <td>{wb.paid}</td>
-                  <td>{wb.externalCredentialNumber}</td>
-                  <td>{toCSTDate(wb.arrivalDate)}</td>
-                  <td>{toCSTDate(wb.departureDate)}</td>
-                </tr>
-              ))}
-            </>
-          );
-        })}
+            {entry.misassigned.map((wb) => (
+              <tr class="misassigned">
+                <td>{fee.unit}</td>
+                <td>{wb.guest_firstName} {wb.guest_lastName}</td>
+                <td>Possible Misassigned WB</td>
+                <td>{wb.paid}</td>
+                <td>{wb.externalCredentialNumber}</td>
+                <td>{toCSTDate(wb.arrivalDate)}</td>
+                <td>{toCSTDate(wb.departureDate)}</td>
+              </tr>
+            ))}
+          </>
+        );
+      })}
 
-        {worklist.length === 0 && (
-          <tr>
-            <td colspan="7" style="text-align:center; padding: 15px;">
-              All registrations are fully assigned — no RFID work needed.
-            </td>
-          </tr>
-        )}
-      </tbody>
-    </table>
-  </div>
+      {worklist.length === 0 && (
+        <tr>
+          <td colspan="7" style="text-align:center; padding: 15px;">
+            All registrations are fully assigned — no RFID work needed.
+          </td>
+        </tr>
+      )}
+    </tbody>
+  </table>
 
 </body>
-
 </html>
