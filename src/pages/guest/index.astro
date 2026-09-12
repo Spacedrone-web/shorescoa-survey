@@ -55,7 +55,6 @@ const feeRows = await DB.prepare(`
     createdAt,
     guest_firstName,
     guest_lastName,
-    passType,
     passInfo_name,
     externalCredentialNumber,
     paid
@@ -63,7 +62,7 @@ const feeRows = await DB.prepare(`
   WHERE passInfo_name = 'Registration Fee'
     AND substr(arrivalDate, 1, 10) <= ?
     AND substr(departureDate, 1, 10) >= ?
-`).bind(YESTERDAY, PLUS5).all();
+`).bind(TODAY, PLUS5).all();
 
 let worklist = [];
 
@@ -107,7 +106,7 @@ for (const fee of feeRows.results || []) {
     continue; // fully complete → do not show
   }
 
-  // Misassigned wristband detection (same 6‑day window)
+  // Misassigned wristband detection (same 5‑day window)
   let misassigned = [];
   if (feeRFID && wbBlank.length > 0 && wbRFID.length > 0) {
     const otherRows = await DB.prepare(`
@@ -119,7 +118,7 @@ for (const fee of feeRows.results || []) {
         AND externalCredentialNumber != ''
         AND substr(arrivalDate, 1, 10) <= ?
         AND substr(departureDate, 1, 10) >= ?
-    `).bind(unit, YESTERDAY, PLUS5).all();
+    `).bind(unit, TODAY, PLUS5).all();
 
     misassigned = otherRows.results || [];
   }
