@@ -55,6 +55,7 @@ const feeRows = await DB.prepare(`
     createdAt,
     guest_firstName,
     guest_lastName,
+    passType,
     passInfo_name,
     externalCredentialNumber,
     paid
@@ -62,7 +63,7 @@ const feeRows = await DB.prepare(`
   WHERE passInfo_name = 'Registration Fee'
     AND substr(arrivalDate, 1, 10) <= ?
     AND substr(departureDate, 1, 10) >= ?
-`).bind(TODAY, PLUS5).all();
+`).bind(YESTERDAY, PLUS5).all();
 
 let worklist = [];
 
@@ -106,7 +107,7 @@ for (const fee of feeRows.results || []) {
     continue; // fully complete → do not show
   }
 
-  // Misassigned wristband detection (same 5‑day window)
+  // Misassigned wristband detection (same 6‑day window)
   let misassigned = [];
   if (feeRFID && wbBlank.length > 0 && wbRFID.length > 0) {
     const otherRows = await DB.prepare(`
@@ -158,66 +159,56 @@ const visibleCount = worklist.length;
   <link rel="icon" type="image/x-icon" href="/favicon-circle-v3.ico">
 
   <style>
-	body {
-	  font-family: Arial, sans-serif;
-	  background: #0d1b2a;
-	  color: #ffffff;
+    body {
+      font-family: Arial, sans-serif;
+      background: #0d1b2a;
+      color: #ffffff;
 	  font-size: 13px;
-	}
-
-	.guest-banner {
-	  width: 100%;
-	  background: #1b263b;
-	  padding: 10px 15px;
-	  display: flex;
-	  justify-content: space-between;
-	  border-bottom: 3px solid #415a77;
-	}
-
-	.guest-banner-logo { height: 40px; }
-
-	.guest-banner-title {
-	  font-size: 22px;
-	  font-weight: bold;
-	  text-align: center;
-	}
-
-	.nav-btn, .logout-btn {
-	  padding: 6px 10px;
-	  border-radius: 4px;
-	  border: 1px solid #ffffff;
-	  background: transparent;
-	  color: #ffffff;
-	  cursor: pointer;
-	  font-weight: bold;
-	  font-size: 12px;
-	}
-
-	h2 {
-	  margin: 15px;
-	  font-size: 18px;
-	}
-
-	table {
-	  width: 100%;
-	  border-collapse: collapse;
-	  margin: 0 15px 20px 15px;
-	  background: #1b263b;
-	  border-radius: 6px;
-	  font-size: 12px;
-	}
-
-	thead th {
-	  background: #415a77;
-	  padding: 8px;
-	  border-right: 1px solid #778da9;
-	}
-
-	tbody td {
-	  padding: 6px;
-	  border-bottom: 1px solid #415a77;
-	}
-
+    }
+    .guest-banner {
+      width: 100%;
+      background: #1b263b;
+      padding: 18px 25px;
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 3px solid #415a77;
+    }
+    .guest-banner-logo { height: 60px; }
+    .guest-banner-title {
+      font-size: 34px;
+      font-weight: bold;
+      text-align: center;
+    }
+    .nav-btn, .logout-btn {
+      padding: 10px 16px;
+      border-radius: 6px;
+      border: 2px solid #ffffff;
+      background: transparent;
+      color: #ffffff;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .nav-btn:hover, .logout-btn:hover {
+      background: #ffffff;
+      color: #000000;
+    }
+    h2 { margin: 25px; font-size: 26px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0 25px 40px 25px;
+      background: #1b263b;
+      border-radius: 8px;
+    }
+    thead th {
+      background: #415a77;
+      padding: 12px;
+      border-right: 2px solid #778da9;
+    }
+    tbody td {
+      padding: 10px;
+      border-bottom: 1px solid #415a77;
+    }
     .incomplete { background-color: #8b0000 !important; }
     .misassigned { background-color: #8b4500 !important; }
   </style>
