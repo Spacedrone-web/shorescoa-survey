@@ -13,7 +13,7 @@ const DB = (Astro.locals as any).runtime.env.DB;
 function getCSTDate(offsetDays = 0) {
   const d = new Date();
   d.setDate(d.getDate() + offsetDays);
-  return d.toISOString().slice(0, 10); // ALWAYS YYYY-MM-DD
+  return d.toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
 }
 
 const TODAY = getCSTDate(0);
@@ -60,7 +60,9 @@ const feeRows = await DB.prepare(`
     paid
   FROM guest_reg
   WHERE passInfo_name = 'Registration Fee'
-`);
+    AND substr(arrivalDate, 1, 10) >= ?
+    AND substr(arrivalDate, 1, 10) <= ?
+`).bind(TODAY, PLUS5).all();
 
 let worklist = [];
 
@@ -78,14 +80,9 @@ for (const fee of feeRows.results || []) {
   const isUnpaidWithRFID = (fee.paid === "unpaid" &&
     (fee.externalCredentialNumber || "").trim() !== "");
 
-  // Show paid, ach-pending, and unpaid (even if missing RFID)
-  const includeFee =
-      fee.paid === "paid" ||
-      fee.paid === "ach-pending" ||
-      fee.paid === "unpaid";
-
-  if (!includeFee) continue;
-
+  if (!isPaid && !isUnpaidWithRFID) {
+    continue; // unpaid with no RFID → ignore
+  }
 
   // Fetch wristbands
   const wbRows = await DB.prepare(`
@@ -168,117 +165,61 @@ const visibleCount = worklist.length;
 	  font-size: 13px;
 	}
 
-	/* Banner */
 	.guest-banner {
 	  width: 100%;
 	  background: #1b263b;
-	  padding: 18px 25px;
+	  padding: 10px 15px;
 	  display: flex;
 	  justify-content: space-between;
-	  align-items: center;
-	  border-bottom: 4px solid #415a77;
+	  border-bottom: 3px solid #415a77;
 	}
 
-	.banner-left, .banner-center, .banner-right {
-	  display: flex;
-	  align-items: center;
-	}
-
-	.banner-center {
-	  flex-grow: 1;
-	  justify-content: center;
-	}
-
-	.guest-banner-logo {
-	  height: 60px;
-	}
+	.guest-banner-logo { height: 40px; }
 
 	.guest-banner-title {
-	  font-size: 34px;
+	  font-size: 22px;
 	  font-weight: bold;
-	  white-space: nowrap;
+	  text-align: center;
 	}
 
-	/* Buttons */
 	.nav-btn, .logout-btn {
-	  padding: 10px 16px;
-	  border-radius: 6px;
-	  border: 2px solid #ffffff;
+	  padding: 6px 10px;
+	  border-radius: 4px;
+	  border: 1px solid #ffffff;
 	  background: transparent;
 	  color: #ffffff;
 	  cursor: pointer;
 	  font-weight: bold;
-	  margin-left: 10px;
+	  font-size: 12px;
 	}
 
-	.nav-btn:hover, .logout-btn:hover {
-	  background: #ffffff;
-	  color: #000000;
-	}
-
-	/* Page Title */
 	h2 {
-	  margin: 25px;
-	  font-size: 26px;
-	  color: #ffffff;
+	  margin: 15px;
+	  font-size: 18px;
 	}
 
-	/* Counts */
-	.counts {
-	  margin: 0 25px 10px 25px;
-	  font-size: 14px;
-	  color: #ffffff;
-	}
-
-	/* Table Container */
-	.table-container {
-	  margin: 0 25px 40px 25px;
-	  background: #1b263b;
-	  border-radius: 8px;
-	  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-	  overflow: hidden;
-	}
-
-	/* Table */
 	table {
 	  width: 100%;
 	  border-collapse: collapse;
-	  font-size: 15px;
-	  color: #ffffff;
+	  margin: 0 15px 20px 15px;
+	  background: #1b263b;
+	  border-radius: 6px;
+	  font-size: 12px;
 	}
 
 	thead th {
 	  background: #415a77;
-	  color: white;
-	  padding: 12px 10px;
-	  border-right: 2px solid #778da9;
-	  font-weight: bold;
-	  text-align: left;
+	  padding: 8px;
+	  border-right: 1px solid #778da9;
 	}
 
 	tbody td {
-	  padding: 10px;
-	  border-right: 1px solid #778da9;
+	  padding: 6px;
 	  border-bottom: 1px solid #415a77;
 	}
 
-	tbody tr:nth-child(even) {
-	  background: #0d1b2a;
-	}
-
-	tbody tr:hover {
-	  background: #415a77;
-	}
-
-	/* Status Colors */
-	.incomplete {
-	  background-color: #8b0000 !important;
-	}
-
-	.misassigned {
-	  background-color: #8b4500 !important;
-	}
-
+    .incomplete { background-color: #8b0000 !important; }
+    .misassigned { background-color: #8b4500 !important; }
   </style>
 </head>
 
