@@ -61,7 +61,7 @@ const feeRows = await DB.prepare(`
   FROM guest_reg
   WHERE passInfo_name = 'Registration Fee'
     AND substr(arrivalDate, 1, 10) >= ?
-    AND substr(arrivalDate, 1, 10) <= ?
+    AND substr(departureDate, 1, 10) <= ?
 `).bind(YESTERDAY, PLUS5).all();
 
 let worklist = [];
