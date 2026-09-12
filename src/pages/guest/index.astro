@@ -165,115 +165,186 @@ const visibleCount = worklist.length;
 	  font-size: 13px;
 	}
 
+	/* Banner */
 	.guest-banner {
 	  width: 100%;
 	  background: #1b263b;
-	  padding: 10px 15px;
+	  padding: 18px 25px;
 	  display: flex;
 	  justify-content: space-between;
-	  border-bottom: 3px solid #415a77;
+	  align-items: center;
+	  border-bottom: 4px solid #415a77;
 	}
 
-	.guest-banner-logo { height: 40px; }
+	.banner-left, .banner-center, .banner-right {
+	  display: flex;
+	  align-items: center;
+	}
+
+	.banner-center {
+	  flex-grow: 1;
+	  justify-content: center;
+	}
+
+	.guest-banner-logo {
+	  height: 60px;
+	}
 
 	.guest-banner-title {
-	  font-size: 22px;
+	  font-size: 34px;
 	  font-weight: bold;
-	  text-align: center;
+	  white-space: nowrap;
 	}
 
+	/* Buttons */
 	.nav-btn, .logout-btn {
-	  padding: 6px 10px;
-	  border-radius: 4px;
-	  border: 1px solid #ffffff;
+	  padding: 10px 16px;
+	  border-radius: 6px;
+	  border: 2px solid #ffffff;
 	  background: transparent;
 	  color: #ffffff;
 	  cursor: pointer;
 	  font-weight: bold;
-	  font-size: 12px;
+	  margin-left: 10px;
 	}
 
+	.nav-btn:hover, .logout-btn:hover {
+	  background: #ffffff;
+	  color: #000000;
+	}
+
+	/* Page Title */
 	h2 {
-	  margin: 15px;
-	  font-size: 18px;
+	  margin: 25px;
+	  font-size: 26px;
+	  color: #ffffff;
 	}
 
+	/* Counts */
+	.counts {
+	  margin: 0 25px 10px 25px;
+	  font-size: 14px;
+	  color: #ffffff;
+	}
+
+	/* Table Container */
+	.table-container {
+	  margin: 0 25px 40px 25px;
+	  background: #1b263b;
+	  border-radius: 8px;
+	  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+	  overflow: hidden;
+	}
+
+	/* Table */
 	table {
 	  width: 100%;
 	  border-collapse: collapse;
-	  margin: 0 15px 20px 15px;
-	  background: #1b263b;
-	  border-radius: 6px;
-	  font-size: 12px;
+	  font-size: 15px;
+	  color: #ffffff;
 	}
 
 	thead th {
 	  background: #415a77;
-	  padding: 8px;
-	  border-right: 1px solid #778da9;
+	  color: white;
+	  padding: 12px 10px;
+	  border-right: 2px solid #778da9;
+	  font-weight: bold;
+	  text-align: left;
 	}
 
 	tbody td {
-	  padding: 6px;
+	  padding: 10px;
+	  border-right: 1px solid #778da9;
 	  border-bottom: 1px solid #415a77;
 	}
 
-    .incomplete { background-color: #8b0000 !important; }
-    .misassigned { background-color: #8b4500 !important; }
+	tbody tr:nth-child(even) {
+	  background: #0d1b2a;
+	}
+
+	tbody tr:hover {
+	  background: #415a77;
+	}
+
+	/* Status Colors */
+	.incomplete {
+	  background-color: #8b0000 !important;
+	}
+
+	.misassigned {
+	  background-color: #8b4500 !important;
+	}
+
   </style>
 </head>
 
 <body>
 
+  <!-- HEADER -->
   <div class="guest-banner">
-    <img src="/sop_logo.jpg" class="guest-banner-logo" />
-    <div class="guest-banner-title">RFID Worklist</div>
-    <button class="nav-btn" onclick="window.location.href='/status'">Return to Status</button>
+    <div class="banner-left">
+      <img src="/sop_logo.jpg" class="guest-banner-logo" />
+    </div>
+
+    <div class="banner-center">
+      <div class="guest-banner-title">RFID Worklist</div>
+    </div>
+
+    <div class="banner-right">
+      <button class="nav-btn" onclick="window.location.href='/status'">
+        Return to Status
+      </button>
+
+      <button class="logout-btn" onclick="
+        document.cookie = 'sop_auth=; Max-Age=0; path=/';
+        window.location.href='https://www.google.com/';
+      ">
+        Logout
+      </button>
+    </div>
   </div>
 
+  <!-- PAGE CONTENT -->
   <h2>RFID Assignment Worklist</h2>
 
-  <div style="margin: 0 25px 10px 25px;">
+  <div class="counts">
     Showing {visibleCount} registrations needing RFID work
   </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Unit</th>
-		<th>Arrival</th>
-        <th>Departure</th>
-        <th>Guest</th>
-        <th>Type</th>
-        <th>Paid</th>
-        <th>RFID</th>
-      </tr>
-    </thead>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Unit</th>
+          <th>Guest</th>
+          <th>Type</th>
+          <th>Paid</th>
+          <th>RFID</th>
+          <th>Arrival</th>
+          <th>Departure</th>
+        </tr>
+      </thead>
 
-    <tbody>
-      {worklist.map((entry) => {
-        const fee = entry.fee;
-        const created = toCSTDateTime(fee.createdAt);
+      <tbody>
+        {worklist.map((entry) => {
+          const fee = entry.fee;
 
-        return (
-          <>
-            <tr class="incomplete">
-              <td>{fee.unit}</td>
-              <td>{fee.guest_firstName} {fee.guest_lastName}</td>
-              <td>Registration Fee</td>
-              <td>{fee.paid}</td>
-              <td>{fee.externalCredentialNumber || "(missing)"}</td>
-              <td>{toCSTDate(fee.arrivalDate)}</td>
-              <td>{toCSTDate(fee.departureDate)}</td>
-            </tr>
+          return (
+            <>
+              <!-- Registration Fee Row -->
+              <tr class="incomplete">
+                <td>{fee.unit}</td>
+                <td>{fee.guest_firstName} {fee.guest_lastName}</td>
+                <td>Registration Fee</td>
+                <td>{fee.paid}</td>
+                <td>{fee.externalCredentialNumber || "(missing)"}</td>
+                <td>{toCSTDate(fee.arrivalDate)}</td>
+                <td>{toCSTDate(fee.departureDate)}</td>
+              </tr>
 
-            {entry.wristbands
-              .sort((a, b) => {
-                const aRFID = (a.externalCredentialNumber || "").trim() !== "";
-                const bRFID = (b.externalCredentialNumber || "").trim() !== "";
-                return aRFID === bRFID ? 0 : aRFID ? -1 : 1;
-              })
-              .map((wb) => (
+              <!-- Wristbands -->
+              {entry.wristbands.map((wb) => (
                 <tr class={wb.externalCredentialNumber ? "" : "incomplete"}>
                   <td>{fee.unit}</td>
                   <td>{wb.guest_firstName} {wb.guest_lastName}</td>
@@ -285,30 +356,33 @@ const visibleCount = worklist.length;
                 </tr>
               ))}
 
-            {entry.misassigned.map((wb) => (
-              <tr class="misassigned">
-                <td>{fee.unit}</td>
-                <td>{wb.guest_firstName} {wb.guest_lastName}</td>
-                <td>Possible Misassigned WB</td>
-                <td>{wb.paid}</td>
-                <td>{wb.externalCredentialNumber}</td>
-                <td>{toCSTDate(wb.arrivalDate)}</td>
-                <td>{toCSTDate(wb.departureDate)}</td>
-              </tr>
-            ))}
-          </>
-        );
-      })}
+              <!-- Misassigned -->
+              {entry.misassigned.map((wb) => (
+                <tr class="misassigned">
+                  <td>{fee.unit}</td>
+                  <td>{wb.guest_firstName} {wb.guest_lastName}</td>
+                  <td>Possible Misassigned WB</td>
+                  <td>{wb.paid}</td>
+                  <td>{wb.externalCredentialNumber}</td>
+                  <td>{toCSTDate(wb.arrivalDate)}</td>
+                  <td>{toCSTDate(wb.departureDate)}</td>
+                </tr>
+              ))}
+            </>
+          );
+        })}
 
-      {worklist.length === 0 && (
-        <tr>
-          <td colspan="7" style="text-align:center; padding: 15px;">
-            All registrations are fully assigned — no RFID work needed.
-          </td>
-        </tr>
-      )}
-    </tbody>
-  </table>
+        {worklist.length === 0 && (
+          <tr>
+            <td colspan="7" style="text-align:center; padding: 15px;">
+              All registrations are fully assigned — no RFID work needed.
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
 
 </body>
+
 </html>
