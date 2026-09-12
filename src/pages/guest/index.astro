@@ -62,7 +62,7 @@ const feeRows = await DB.prepare(`
   WHERE passInfo_name = 'Registration Fee'
     AND substr(arrivalDate, 1, 10) >= ?
     AND substr(arrivalDate, 1, 10) <= ?
-`).bind(TODAY, PLUS5).all();
+`).bind(YESTERDAY, PLUS5).all();
 
 let worklist = [];
 
