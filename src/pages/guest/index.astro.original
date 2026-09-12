@@ -1,0 +1,558 @@
+---
+Astro.response.headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
+Astro.response.headers.set("Pragma", "no-cache");
+Astro.response.headers.set("Expires", "0");
+
+// Force CST/CDT for date defaults
+//const CST_TODAY = new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
+
+// D1 binding (Cloudflare Pages)
+const DB = (Astro.locals as any).runtime.env.DB;
+
+// ============================================================
+// Format helpers (CST)
+// ============================================================
+
+function getCSTDate() {
+  return new Date().toLocaleDateString("en-CA", {
+    timeZone: "America/Chicago"
+  });
+}
+
+const CST_TODAY = getCSTDate();
+
+function toCSTDate(dateStr) {
+  if (!dateStr) return "";
+  // If already YYYY-MM-DD, do NOT convert
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+
+  // Otherwise convert MM/DD/YYYY → YYYY-MM-DD
+  return new Date(dateStr).toLocaleDateString("en-CA", {
+    timeZone: "America/Chicago"
+  });
+}
+
+function toCSTDateTime(dateStr) {
+  if (!dateStr) return { date: "", time: "" };
+
+  const d = new Date(dateStr);
+
+  return {
+    date: d.toLocaleDateString("en-CA", { timeZone: "America/Chicago" }),
+    time: d.toLocaleTimeString("en-US", {
+      timeZone: "America/Chicago",
+      hour: "numeric",
+      minute: "2-digit"
+    })
+  };
+}
+
+// Read query params
+const url = new URL(Astro.request.url);
+const fromParam = url.searchParams.get("from");
+const toParam = url.searchParams.get("to");
+const showAllParam = url.searchParams.get("showAll");
+
+const fromDateRaw = fromParam || CST_TODAY;
+const toDateRaw   = toParam   || CST_TODAY;
+const showAll     = showAllParam === "on" || showAllParam === "1";
+
+// Normalize to YYYY-MM-DD (CST)
+const fromDate = toCSTDate(fromDateRaw);
+const toDate   = toCSTDate(toDateRaw);
+
+let rows;
+
+if (showAll) {
+  // No date filter – show everything
+  rows = await DB.prepare(`
+    SELECT
+      passId,
+      registrationId,
+      unit,
+      substr(arrivalDate, 1, 10) AS arrivalDate,
+      substr(departureDate, 1, 10) AS departureDate,
+      createdAt,
+      guest_firstName,
+      guest_lastName,
+      passType,
+      passInfo_name,
+      externalCredentialNumber,
+      paid
+    FROM guest_reg
+    ORDER BY arrivalDate, unit, createdAt
+  `).all();
+} else {
+  // Filter by arrivalDate BETWEEN fromDate and toDate
+  rows = await DB.prepare(`
+    SELECT
+      passId,
+      registrationId,
+      unit,
+      substr(arrivalDate, 1, 10) AS arrivalDate,
+      substr(departureDate, 1, 10) AS departureDate,
+      createdAt,
+      guest_firstName,
+      guest_lastName,
+      passType,
+      passInfo_name,
+      externalCredentialNumber,
+      paid
+    FROM guest_reg
+    WHERE substr(arrivalDate, 1, 10) >= ?
+      AND substr(arrivalDate, 1, 10) <= ?
+    ORDER BY arrivalDate, unit, createdAt
+  `).bind(fromDate, toDate).all();
+}
+
+// ============================================================
+// CORRECT GROUPING: unit → registrationId
+// ============================================================
+
+const grouped = new Map();
+
+for (const row of rows.results || []) {
+  const unit = row.unit;
+  const regId = row.registrationId;
+
+  if (!grouped.has(unit)) grouped.set(unit, new Map());
+  const regMap = grouped.get(unit);
+
+  if (!regMap.has(regId)) {
+    regMap.set(regId, { fee: null, wristbands: [] });
+  }
+
+  const group = regMap.get(regId);
+
+  if (row.passInfo_name === "Registration Fee") {
+    group.fee = row;
+  } else {
+    group.wristbands.push(row);
+  }
+}
+
+// ============================================================
+// BUILD FINAL FILTERED + SORTED ROWS (correct hierarchical logic)
+// ============================================================
+
+let filteredRows = [];
+
+for (const [unit, regMap] of grouped.entries()) {
+
+  for (const [regId, group] of regMap.entries()) {
+    const fee = group.fee;
+    const wb = group.wristbands;
+
+    if (!fee) continue;
+
+    // ------------------------------------------------------------
+    // MUST BE DEFINED HERE (ABOVE filtering + wristband loop)
+    // ------------------------------------------------------------
+    const paid = fee.paid;
+    const validFee = (paid === "paid" || paid === "ach-pending");
+    const unpaidFee = (paid === "unpaid");
+
+    const feeRFID = (fee.externalCredentialNumber || "").trim() !== "";
+    const wristRFID = wb.filter(w => (w.externalCredentialNumber || "").trim() !== "");
+    const wristBlank = wb.filter(w => (w.externalCredentialNumber || "").trim() === "");
+
+    let include = false;
+
+    // ============================================================
+    // DEFAULT VIEW — ONLY PAID/ACH-PENDING, NEVER UNPAID
+    // ============================================================
+    if (!showAll) {
+      if (!validFee) {
+        include = false; // hide all unpaid
+      } else {
+        const isComplete =
+          feeRFID &&
+          wristRFID.length === wb.length &&
+          wristBlank.length === 0;
+
+        include = !isComplete; // show only incomplete paid registrations
+      }
+    }
+
+    // ============================================================
+    // SHOW ALL VIEW — FINAL RULES
+    // ============================================================
+    else {
+
+      // RULE 1: Always show paid/ach-pending
+      if (validFee) {
+        include = true;
+      }
+
+      // RULE 2: Show unpaid ONLY if unpaid has RFID wristbands
+      if (unpaidFee && wristRFID.length > 0) {
+        include = true;
+      }
+
+      // RULE 3: Hide unpaid with NO RFID
+      if (unpaidFee && wristRFID.length === 0) {
+        include = false;
+      }
+    }
+
+    if (!include) continue;
+    // ------------------------------------------------------------
+    // Registration Fee row (guest name shown)
+    // ------------------------------------------------------------
+    filteredRows.push({
+      ...fee,
+      registrationId: regId,
+      passInfo_name: "Registration Fee",
+      guest_firstName: fee.guest_firstName,
+      guest_lastName: fee.guest_lastName
+    });
+
+    // ------------------------------------------------------------
+    // Wristband rows (guest name hidden)
+    // ------------------------------------------------------------
+    for (const w of wb) {
+
+      const wRFID = (w.externalCredentialNumber || "").trim() !== "";
+
+      // SHOW ALL: unpaid should only show RFID wristbands
+      if (showAll && unpaidFee && !wRFID) {
+        continue; // skip blank wristbands under unpaid
+      }
+
+      filteredRows.push({
+        ...w,
+        registrationId: regId,
+        guest_firstName: "",
+        guest_lastName: ""
+      });
+    }
+  }
+}
+
+
+// ============================================================
+// SORT FINAL OUTPUT — GROUP BY registrationId CORRECTLY
+// ============================================================
+
+filteredRows.sort((a, b) => {
+  // 1. Sort by unit
+  if (a.unit !== b.unit) return a.unit - b.unit;
+
+  // 2. Sort by registrationId (keeps unpaid + paid separate)
+  if (a.registrationId !== b.registrationId) {
+    return a.registrationId.localeCompare(b.registrationId);
+  }
+
+  // 3. Fee before wristbands
+  const aIsFee = a.passInfo_name === "Registration Fee";
+  const bIsFee = b.passInfo_name === "Registration Fee";
+
+  if (aIsFee && !bIsFee) return -1;
+  if (!aIsFee && bIsFee) return 1;
+
+  // 4. Paid before unpaid (inside each registrationId)
+  const aPaid = (a.paid === "paid" || a.paid === "ach-pending");
+  const bPaid = (b.paid === "paid" || b.paid === "ach-pending");
+
+  if (aPaid && !bPaid) return -1;
+  if (!aPaid && bPaid) return 1;
+
+  return 0;
+});
+
+const rawCount = rows?.results?.length || 0;
+const totalCount = filteredRows.length;
+const visibleCount = filteredRows.length;
+---
+
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Guest Registration Summary</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/x-icon" href="/favicon-circle-v3.ico">
+
+  <style>
+    /* RESET */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #0d1b2a;
+      color: #ffffff;
+    }
+
+    /* HEADER */
+    .guest-banner {
+      width: 100%;
+      background: #1b263b;
+      color: white;
+      padding: 18px 25px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 4px solid #415a77;
+    }
+
+    .banner-left {
+      display: flex;
+      align-items: center;
+    }
+
+    .guest-banner-logo {
+      height: 60px;
+    }
+
+    .banner-center {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+    }
+
+    .guest-banner-title {
+      font-size: 34px;
+      font-weight: bold;
+      white-space: nowrap;
+      text-align: center;
+    }
+
+    .banner-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+      width: 200px;
+    }
+
+    /* BUTTONS */
+    .nav-btn,
+    .logout-btn {
+      width: 100%;
+      text-align: center;
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 14px;
+      border: 2px solid #ffffff;
+      background: transparent;
+      color: #ffffff;
+      transition: 0.2s;
+    }
+
+    .nav-btn:hover,
+    .logout-btn:hover {
+      background: #ffffff;
+      color: #000000;
+    }
+
+    /* PAGE CONTENT */
+    h2 {
+      margin: 25px;
+      font-size: 26px;
+      color: #ffffff;
+    }
+
+    .top-bar {
+      margin: 0 25px 20px 25px;
+      background: #1b263b;
+      padding: 15px;
+      border-radius: 8px;
+    }
+
+    .left-controls label {
+      margin-right: 6px;
+      font-weight: bold;
+      color: #ffffff;
+    }
+
+    .left-controls input[type="date"] {
+      margin-right: 12px;
+      padding: 4px 6px;
+      background: #415a77;
+      color: #ffffff;
+      border: 1px solid #778da9;
+      border-radius: 4px;
+    }
+
+    .btn-blue {
+      background: #415a77;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-right: 8px;
+      transition: 0.2s;
+    }
+
+    .btn-blue:hover {
+      background: #778da9;
+    }
+
+    .counts {
+      margin: 0 25px 10px 25px;
+      font-size: 14px;
+      color: #ffffff;
+    }
+
+    /* TABLE */
+    .table-container {
+      margin: 0 25px 40px 25px;
+      background: #1b263b;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 15px;
+      color: #ffffff;
+    }
+
+    thead th {
+      background: #415a77;
+      color: white;
+      padding: 12px 10px;
+      border-right: 2px solid #778da9;
+      font-weight: bold;
+      text-align: left;
+    }
+
+    tbody td {
+      padding: 10px;
+      border-right: 1px solid #778da9;
+      border-bottom: 1px solid #415a77;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #0d1b2a;
+    }
+
+    tbody tr:hover {
+      background: #415a77;
+    }
+  </style>
+
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="guest-banner">
+    <div class="banner-left">
+      <img src="/sop_logo.jpg" class="guest-banner-logo" />
+    </div>
+
+    <div class="banner-center">
+      <div class="guest-banner-title">Guest Reservations</div>
+    </div>
+
+    <div class="banner-right">
+      <button class="nav-btn" onclick="window.location.href='/status'">
+        Return to Status
+      </button>
+
+      <button class="logout-btn" onclick="
+        document.cookie = 'sop_auth=; Max-Age=0; path=/';
+        window.location.href='https://www.google.com/';
+      ">
+        Logout
+      </button>
+    </div>
+  </div>
+
+  <!-- PAGE CONTENT -->
+  <h2>Guest Registration Summary</h2>
+
+  <div class="top-bar">
+    <form class="left-controls" method="GET">
+      <label>From:</label>
+      <input type="date" name="from" value={fromDate} />
+
+      <label>To:</label>
+      <input type="date" name="to" value={toDate} />
+
+      <input type="checkbox" name="showAll" checked={showAll} />
+      <label>Show all</label>
+
+      <button type="submit" class="btn-blue">Search</button>
+      <button type="submit" class="btn-blue">Refresh</button>
+
+      <button
+        type="button"
+        class="btn-blue"
+        onclick="
+          const today = '{CST_TODAY}';
+          this.form.from.value = today;
+          this.form.to.value = today;
+          this.form.showAll.checked = false;
+          this.form.submit();
+        "
+      >
+        Reset to Today
+      </button>
+    </form>
+  </div>
+
+  <div class="counts">
+    Showing {visibleCount} of {totalCount} registrations
+    for {fromDate} to {toDate}
+    {showAll ? "(Show all enabled)" : "(Filtered by RFID / wristband rules)"}
+  </div>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Unit</th>
+          <th>Arrival</th>
+          <th>Departure</th>
+          <th>Created At</th>
+          <th>Guest</th>
+          <th>Band Type</th>
+          <th>RFID</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {filteredRows.map((row) => {
+          const created = toCSTDateTime(row.createdAt);
+          return (
+            <tr>
+              <td>{row.unit}</td>
+              <td>{toCSTDate(row.arrivalDate)}</td>
+              <td>{toCSTDate(row.departureDate)}</td>
+              <td>{created.date} {created.time}</td>
+
+              <td>
+                {row.passInfo_name === "Registration Fee"
+                  ? `${row.guest_firstName} ${row.guest_lastName}`
+                  : ""}
+              </td>
+
+              <td>
+                {row.passInfo_name === "Registration Fee"
+                  ? `Registration Fee (${row.paid || "unknown"})`
+                  : row.passInfo_name}
+              </td>
+
+              <td>{row.externalCredentialNumber}</td>
+            </tr>
+          );
+        })}
+
+        {filteredRows.length === 0 && (
+          <tr>
+            <td colspan="7" style="text-align:center; padding: 15px;">
+              No registrations found for the selected range.
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+
+</body>
+</html>
