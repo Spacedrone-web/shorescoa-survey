@@ -3,11 +3,14 @@ Astro.response.headers.set("Cache-Control", "no-cache, no-store, must-revalidate
 Astro.response.headers.set("Pragma", "no-cache");
 Astro.response.headers.set("Expires", "0");
 
-// Cloudflare D1 binding
+// Force CST/CDT for date defaults
+//const CST_TODAY = new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
+
+// D1 binding (Cloudflare Pages)
 const DB = (Astro.locals as any).runtime.env.DB;
 
 // ============================================================
-// CST Helpers
+// Format helpers (CST)
 // ============================================================
 
 function getCSTDate() {
@@ -20,7 +23,10 @@ const CST_TODAY = getCSTDate();
 
 function toCSTDate(dateStr) {
   if (!dateStr) return "";
+  // If already YYYY-MM-DD, do NOT convert
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+
+  // Otherwise convert MM/DD/YYYY → YYYY-MM-DD
   return new Date(dateStr).toLocaleDateString("en-CA", {
     timeZone: "America/Chicago"
   });
@@ -28,7 +34,9 @@ function toCSTDate(dateStr) {
 
 function toCSTDateTime(dateStr) {
   if (!dateStr) return { date: "", time: "" };
+
   const d = new Date(dateStr);
+
   return {
     date: d.toLocaleDateString("en-CA", { timeZone: "America/Chicago" }),
     time: d.toLocaleTimeString("en-US", {
@@ -39,42 +47,31 @@ function toCSTDateTime(dateStr) {
   };
 }
 
-// ============================================================
 // Read query params
-// ============================================================
-
 const url = new URL(Astro.request.url);
 const fromParam = url.searchParams.get("from");
 const toParam = url.searchParams.get("to");
 const showAllParam = url.searchParams.get("showAll");
 
-const showAll = showAllParam === "on" || showAllParam === "1";
-
 const fromDateRaw = fromParam || CST_TODAY;
 const toDateRaw   = toParam   || CST_TODAY;
+const showAll     = showAllParam === "on" || showAllParam === "1";
 
+// Normalize to YYYY-MM-DD (CST)
 const fromDate = toCSTDate(fromDateRaw);
 const toDate   = toCSTDate(toDateRaw);
 
-// ============================================================
-// MODE 1: SHOW ALL (optimized)
-// ============================================================
-
-let filteredRows = [];
+let rows;
 
 if (showAll) {
-
-  // ------------------------------------------------------------
-  // Query ONLY Registration Fee rows for guests CURRENTLY STAYING
-  // arrivalDate <= TODAY AND departure > TODAY
-  // ------------------------------------------------------------
-  const feeRows = await DB.prepare(`
+  // No date filter – show everything
+  rows = await DB.prepare(`
     SELECT
       passId,
       registrationId,
       unit,
       substr(arrivalDate, 1, 10) AS arrivalDate,
-      substr(departure, 1, 10) AS departure,
+      substr(departureDate, 1, 10) AS departureDate,
       createdAt,
       guest_firstName,
       guest_lastName,
@@ -83,72 +80,17 @@ if (showAll) {
       externalCredentialNumber,
       paid
     FROM guest_reg
-    WHERE passInfo_name = 'Registration Fee'
-      AND substr(arrivalDate, 1, 10) <= ?
-      AND substr(departure, 1, 10) > ?
-    ORDER BY unit, registrationId
-  `).bind(CST_TODAY, CST_TODAY).all();
-
-  // ------------------------------------------------------------
-  // For each registration, fetch wristbands (small query)
-  // ------------------------------------------------------------
-  for (const fee of feeRows.results || []) {
-
-    const regId = fee.registrationId;
-
-    const wbRows = await DB.prepare(`
-      SELECT *
-      FROM guest_reg
-      WHERE registrationId = ?
-        AND passInfo_name != 'Registration Fee'
-    `).bind(regId).all();
-
-    const wristbands = wbRows.results || [];
-
-    // ------------------------------------------------------------
-    // Determine completeness
-    // ------------------------------------------------------------
-    const feeRFID = (fee.externalCredentialNumber || "").trim() !== "";
-    const wristRFID = wristbands.filter(w => (w.externalCredentialNumber || "").trim() !== "");
-    const wristBlank = wristbands.filter(w => (w.externalCredentialNumber || "").trim() === "");
-
-    const paid = fee.paid;
-    const validFee = (paid === "paid" || paid === "ach-pending");
-    const unpaidFee = (paid === "unpaid");
-
-    let complete = false;
-
-    if (validFee) {
-      complete =
-        feeRFID &&
-        wristRFID.length === wristbands.length &&
-        wristBlank.length === 0;
-    }
-
-    // ------------------------------------------------------------
-    // Build ONE ROW per registration
-    // ------------------------------------------------------------
-    filteredRows.push({
-      ...fee,
-      registrationId: regId,
-      isComplete: complete,
-      isUnpaid: unpaidFee
-    });
-  }
-
+    ORDER BY arrivalDate, unit, createdAt
+  `).all();
 } else {
-
-  // ============================================================
-  // MODE 2: NORMAL MODE (date filtered, full wristband logic)
-  // ============================================================
-
-  const rows = await DB.prepare(`
+  // Filter by arrivalDate BETWEEN fromDate and toDate
+  rows = await DB.prepare(`
     SELECT
       passId,
       registrationId,
       unit,
       substr(arrivalDate, 1, 10) AS arrivalDate,
-      substr(departure, 1, 10) AS departure,
+      substr(departureDate, 1, 10) AS departureDate,
       createdAt,
       guest_firstName,
       guest_lastName,
@@ -161,84 +103,166 @@ if (showAll) {
       AND substr(arrivalDate, 1, 10) <= ?
     ORDER BY arrivalDate, unit, createdAt
   `).bind(fromDate, toDate).all();
+}
 
-  // Grouping logic stays the same
-  const grouped = new Map();
+// ============================================================
+// CORRECT GROUPING: unit → registrationId
+// ============================================================
 
-  for (const row of rows.results || []) {
-    const unit = row.unit;
-    const regId = row.registrationId;
+const grouped = new Map();
 
-    if (!grouped.has(unit)) grouped.set(unit, new Map());
-    const regMap = grouped.get(unit);
+for (const row of rows.results || []) {
+  const unit = row.unit;
+  const regId = row.registrationId;
 
-    if (!regMap.has(regId)) {
-      regMap.set(regId, { fee: null, wristbands: [] });
-    }
+  if (!grouped.has(unit)) grouped.set(unit, new Map());
+  const regMap = grouped.get(unit);
 
-    const group = regMap.get(regId);
-
-    if (row.passInfo_name === "Registration Fee") {
-      group.fee = row;
-    } else {
-      group.wristbands.push(row);
-    }
+  if (!regMap.has(regId)) {
+    regMap.set(regId, { fee: null, wristbands: [] });
   }
 
-  // Build final rows (normal mode)
-  for (const [unit, regMap] of grouped.entries()) {
-    for (const [regId, group] of regMap.entries()) {
-      const fee = group.fee;
-      const wb = group.wristbands;
+  const group = regMap.get(regId);
 
-      if (!fee) continue;
+  if (row.passInfo_name === "Registration Fee") {
+    group.fee = row;
+  } else {
+    group.wristbands.push(row);
+  }
+}
 
-      const paid = fee.paid;
-      const validFee = (paid === "paid" || paid === "ach-pending");
-      const unpaidFee = (paid === "unpaid");
+// ============================================================
+// BUILD FINAL FILTERED + SORTED ROWS (correct hierarchical logic)
+// ============================================================
 
-      const feeRFID = (fee.externalCredentialNumber || "").trim() !== "";
-      const wristRFID = wb.filter(w => (w.externalCredentialNumber || "").trim() !== "");
-      const wristBlank = wb.filter(w => (w.externalCredentialNumber || "").trim() === "");
+let filteredRows = [];
 
-      let include = false;
+for (const [unit, regMap] of grouped.entries()) {
 
-      if (!showAll) {
-        if (!validFee) {
-          include = false;
-        } else {
-          const isComplete =
-            feeRFID &&
-            wristRFID.length === wb.length &&
-            wristBlank.length === 0;
+  for (const [regId, group] of regMap.entries()) {
+    const fee = group.fee;
+    const wb = group.wristbands;
 
-          include = !isComplete;
-        }
+    if (!fee) continue;
+
+    // ------------------------------------------------------------
+    // MUST BE DEFINED HERE (ABOVE filtering + wristband loop)
+    // ------------------------------------------------------------
+    const paid = fee.paid;
+    const validFee = (paid === "paid" || paid === "ach-pending");
+    const unpaidFee = (paid === "unpaid");
+
+    const feeRFID = (fee.externalCredentialNumber || "").trim() !== "";
+    const wristRFID = wb.filter(w => (w.externalCredentialNumber || "").trim() !== "");
+    const wristBlank = wb.filter(w => (w.externalCredentialNumber || "").trim() === "");
+
+    let include = false;
+
+    // ============================================================
+    // DEFAULT VIEW — ONLY PAID/ACH-PENDING, NEVER UNPAID
+    // ============================================================
+    if (!showAll) {
+      if (!validFee) {
+        include = false; // hide all unpaid
+      } else {
+        const isComplete =
+          feeRFID &&
+          wristRFID.length === wb.length &&
+          wristBlank.length === 0;
+
+        include = !isComplete; // show only incomplete paid registrations
+      }
+    }
+
+    // ============================================================
+    // SHOW ALL VIEW — FINAL RULES
+    // ============================================================
+    else {
+
+      // RULE 1: Always show paid/ach-pending
+      if (validFee) {
+        include = true;
       }
 
-      if (!include) continue;
+      // RULE 2: Show unpaid ONLY if unpaid has RFID wristbands
+      if (unpaidFee && wristRFID.length > 0) {
+        include = true;
+      }
+
+      // RULE 3: Hide unpaid with NO RFID
+      if (unpaidFee && wristRFID.length === 0) {
+        include = false;
+      }
+    }
+
+    if (!include) continue;
+    // ------------------------------------------------------------
+    // Registration Fee row (guest name shown)
+    // ------------------------------------------------------------
+    filteredRows.push({
+      ...fee,
+      registrationId: regId,
+      passInfo_name: "Registration Fee",
+      guest_firstName: fee.guest_firstName,
+      guest_lastName: fee.guest_lastName
+    });
+
+    // ------------------------------------------------------------
+    // Wristband rows (guest name hidden)
+    // ------------------------------------------------------------
+    for (const w of wb) {
+
+      const wRFID = (w.externalCredentialNumber || "").trim() !== "";
+
+      // SHOW ALL: unpaid should only show RFID wristbands
+      if (showAll && unpaidFee && !wRFID) {
+        continue; // skip blank wristbands under unpaid
+      }
 
       filteredRows.push({
-        ...fee,
+        ...w,
         registrationId: regId,
-        isComplete: false,
-        isUnpaid: unpaidFee
+        guest_firstName: "",
+        guest_lastName: ""
       });
-
-      for (const w of wb) {
-        filteredRows.push({
-          ...w,
-          registrationId: regId,
-          isComplete: false,
-          isUnpaid: unpaidFee
-        });
-      }
     }
   }
 }
 
-const visibleCount = filteredRows.length;
+
+// ============================================================
+// SORT FINAL OUTPUT — GROUP BY registrationId CORRECTLY
+// ============================================================
+
+filteredRows.sort((a, b) => {
+  // 1. Sort by unit
+  if (a.unit !== b.unit) return a.unit - b.unit;
+
+  // 2. Sort by registrationId (keeps unpaid + paid separate)
+  if (a.registrationId !== b.registrationId) {
+    return a.registrationId.localeCompare(b.registrationId);
+  }
+
+  // 3. Fee before wristbands
+  const aIsFee = a.passInfo_name === "Registration Fee";
+  const bIsFee = b.passInfo_name === "Registration Fee";
+
+  if (aIsFee && !bIsFee) return -1;
+  if (!aIsFee && bIsFee) return 1;
+
+  // 4. Paid before unpaid (inside each registrationId)
+  const aPaid = (a.paid === "paid" || a.paid === "ach-pending");
+  const bPaid = (b.paid === "paid" || b.paid === "ach-pending");
+
+  if (aPaid && !bPaid) return -1;
+  if (!aPaid && bPaid) return 1;
+
+  return 0;
+});
+
+const rawCount = rows?.results?.length || 0;
 const totalCount = filteredRows.length;
+const visibleCount = filteredRows.length;
 ---
 
 <html lang="en">
@@ -249,6 +273,7 @@ const totalCount = filteredRows.length;
   <link rel="icon" type="image/x-icon" href="/favicon-circle-v3.ico">
 
   <style>
+    /* RESET */
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
@@ -257,6 +282,7 @@ const totalCount = filteredRows.length;
       color: #ffffff;
     }
 
+    /* HEADER */
     .guest-banner {
       width: 100%;
       background: #1b263b;
@@ -268,7 +294,20 @@ const totalCount = filteredRows.length;
       border-bottom: 4px solid #415a77;
     }
 
-    .guest-banner-logo { height: 60px; }
+    .banner-left {
+      display: flex;
+      align-items: center;
+    }
+
+    .guest-banner-logo {
+      height: 60px;
+    }
+
+    .banner-center {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+    }
 
     .guest-banner-title {
       font-size: 34px;
@@ -277,7 +316,17 @@ const totalCount = filteredRows.length;
       text-align: center;
     }
 
-    .nav-btn, .logout-btn {
+    .banner-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+      width: 200px;
+    }
+
+    /* BUTTONS */
+    .nav-btn,
+    .logout-btn {
       width: 100%;
       text-align: center;
       padding: 10px 16px;
@@ -291,11 +340,13 @@ const totalCount = filteredRows.length;
       transition: 0.2s;
     }
 
-    .nav-btn:hover, .logout-btn:hover {
+    .nav-btn:hover,
+    .logout-btn:hover {
       background: #ffffff;
       color: #000000;
     }
 
+    /* PAGE CONTENT */
     h2 {
       margin: 25px;
       font-size: 26px;
@@ -309,6 +360,21 @@ const totalCount = filteredRows.length;
       border-radius: 8px;
     }
 
+    .left-controls label {
+      margin-right: 6px;
+      font-weight: bold;
+      color: #ffffff;
+    }
+
+    .left-controls input[type="date"] {
+      margin-right: 12px;
+      padding: 4px 6px;
+      background: #415a77;
+      color: #ffffff;
+      border: 1px solid #778da9;
+      border-radius: 4px;
+    }
+
     .btn-blue {
       background: #415a77;
       color: white;
@@ -320,7 +386,9 @@ const totalCount = filteredRows.length;
       transition: 0.2s;
     }
 
-    .btn-blue:hover { background: #778da9; }
+    .btn-blue:hover {
+      background: #778da9;
+    }
 
     .counts {
       margin: 0 25px 10px 25px;
@@ -328,6 +396,7 @@ const totalCount = filteredRows.length;
       color: #ffffff;
     }
 
+    /* TABLE */
     .table-container {
       margin: 0 25px 40px 25px;
       background: #1b263b;
@@ -358,16 +427,19 @@ const totalCount = filteredRows.length;
       border-bottom: 1px solid #415a77;
     }
 
-    tbody tr:nth-child(even) { background: #0d1b2a; }
-    tbody tr:hover { background: #415a77; }
+    tbody tr:nth-child(even) {
+      background: #0d1b2a;
+    }
 
-    .complete { background-color: #1e5631 !important; }
-    .incomplete { background-color: #8b0000 !important; }
+    tbody tr:hover {
+      background: #415a77;
+    }
   </style>
-</head>
 
+</head>
 <body>
 
+  <!-- HEADER -->
   <div class="guest-banner">
     <div class="banner-left">
       <img src="/sop_logo.jpg" class="guest-banner-logo" />
@@ -391,6 +463,7 @@ const totalCount = filteredRows.length;
     </div>
   </div>
 
+  <!-- PAGE CONTENT -->
   <h2>Guest Registration Summary</h2>
 
   <div class="top-bar">
@@ -424,8 +497,9 @@ const totalCount = filteredRows.length;
   </div>
 
   <div class="counts">
-    Showing {visibleCount} registrations
-    {showAll ? "(Currently staying — Show All mode)" : "(Filtered by date range)"}
+    Showing {visibleCount} of {totalCount} registrations
+    for {fromDate} to {toDate}
+    {showAll ? "(Show all enabled)" : "(Filtered by RFID / wristband rules)"}
   </div>
 
   <div class="table-container">
@@ -437,7 +511,7 @@ const totalCount = filteredRows.length;
           <th>Departure</th>
           <th>Created At</th>
           <th>Guest</th>
-          <th>Status</th>
+          <th>Band Type</th>
           <th>RFID</th>
         </tr>
       </thead>
@@ -445,26 +519,23 @@ const totalCount = filteredRows.length;
       <tbody>
         {filteredRows.map((row) => {
           const created = toCSTDateTime(row.createdAt);
-
-          const rowClass = row.isComplete
-            ? "complete"
-            : "incomplete";
-
           return (
-            <tr class={rowClass}>
+            <tr>
               <td>{row.unit}</td>
               <td>{toCSTDate(row.arrivalDate)}</td>
-              <td>{toCSTDate(row.departure)}</td>
+              <td>{toCSTDate(row.departureDate)}</td>
               <td>{created.date} {created.time}</td>
 
-              <td>{`${row.guest_firstName} ${row.guest_lastName}`}</td>
+              <td>
+                {row.passInfo_name === "Registration Fee"
+                  ? `${row.guest_firstName} ${row.guest_lastName}`
+                  : ""}
+              </td>
 
               <td>
-                {row.isComplete
-                  ? "Complete"
-                  : row.isUnpaid
-                    ? "Unpaid"
-                    : "Incomplete"}
+                {row.passInfo_name === "Registration Fee"
+                  ? `Registration Fee (${row.paid || "unknown"})`
+                  : row.passInfo_name}
               </td>
 
               <td>{row.externalCredentialNumber}</td>
@@ -475,7 +546,7 @@ const totalCount = filteredRows.length;
         {filteredRows.length === 0 && (
           <tr>
             <td colspan="7" style="text-align:center; padding: 15px;">
-              No registrations found.
+              No registrations found for the selected range.
             </td>
           </tr>
         )}
