@@ -59,7 +59,11 @@ const feeRows = await DB.prepare(`
     externalCredentialNumber,
     paid
   FROM guest_reg
-  WHERE passInfo_name = 'Registration Fee';
+  WHERE passInfo_name = 'Registration Fee'
+      AND substr(arrivalDate, 1, 10) <= ?
+      AND substr(departure, 1, 10) > ?
+    ORDER BY unit, registrationId
+  `).bind(CST_TODAY, CST_TODAY).all();
 
 let worklist = [];
 
