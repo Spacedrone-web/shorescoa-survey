@@ -107,9 +107,10 @@ for (const fee of feeRows.results || []) {
     continue; // fully complete → do not show
   }
 
-  // Misassigned wristband detection (same 6‑day window)
+  // Misassigned wristband detection
   let misassigned = [];
   if (feeRFID && wbBlank.length > 0 && wbRFID.length > 0) {
+    // Look for wristbands in same unit with RFID
     const otherRows = await DB.prepare(`
       SELECT *
       FROM guest_reg
@@ -117,9 +118,7 @@ for (const fee of feeRows.results || []) {
         AND passInfo_name = 'Guest Wristband'
         AND externalCredentialNumber IS NOT NULL
         AND externalCredentialNumber != ''
-        AND substr(arrivalDate, 1, 10) <= ?
-        AND substr(departureDate, 1, 10) >= ?
-    `).bind(unit, YESTERDAY, PLUS5).all();
+    `).bind(unit).all();
 
     misassigned = otherRows.results || [];
   }
@@ -163,7 +162,6 @@ const visibleCount = worklist.length;
       font-family: Arial, sans-serif;
       background: #0d1b2a;
       color: #ffffff;
-	  font-size: 13px;
     }
     .guest-banner {
       width: 100%;
@@ -171,7 +169,7 @@ const visibleCount = worklist.length;
       padding: 18px 25px;
       display: flex;
       justify-content: space-between;
-      border-bottom: 3px solid #415a77;
+      border-bottom: 4px solid #415a77;
     }
     .guest-banner-logo { height: 60px; }
     .guest-banner-title {
